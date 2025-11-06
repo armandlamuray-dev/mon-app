@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Espace utilisateur</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f7fa;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #1b263b;
+    }
+
+    section {
+      margin-bottom: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    input, textarea {
+      width: 100%;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    #pages-list {
+      margin-top: 20px;
+    }
+
+    .page-card {
+      background: #f9f9f9;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <script src="header.js"></script>
+
+  <h1>👤 Mon espace</h1>
+  <p id="welcome"></p>
+
+  <!-- Section création de page -->
+  <section>
+    <h2>📝 Créer une page</h2>
+    <input type="text" id="slug" placeholder="Identifiant unique (slug)" />
+    <input type="text" id="title" placeholder="Titre de la page" />
+    <textarea id="content" rows="5" placeholder="Contenu HTML ou texte..."></textarea>
+    <input type="text" id="image" placeholder="Lien vers l'image (URL)" />
+    <label>
+      <input type="checkbox" id="publicPage" /> Rendre cette page publique
+    </label>
+    <button id="save-btn">Enregistrer ma page</button>
+  </section>
+
+  <!-- Section liste des pages -->
+  <section>
+    <h2>📚 Mes pages</h2>
+    <div id="pages-list">Chargement...</div>
+  </section>
+
+  <!-- Section admin : boutons de suppression -->
+  <section>
+    <h2>⚠️ Actions admin</h2>
+    <button id="delete-page-btn">Supprimer une page</button>
+    <button id="delete-user-btn">Supprimer un utilisateur</button>
+  </section>
+
+  <script src="user.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.username || !user.role) {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      const welcomeEl = document.getElementById('welcome');
+      if (welcomeEl) welcomeEl.innerText = `Bienvenue, ${user.username} 👋`;
+
+      // Ajouter bouton déconnexion si absent
+      if (!document.getElementById('logoutBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'logoutBtn';
+        btn.textContent = 'Se déconnecter';
+        btn.style.margin = '10px 0';
+        btn.onclick = () => {
+          localStorage.removeItem('user');
+          window.location.href = '/login.html';
+        };
+        document.body.insertBefore(btn, document.body.firstChild);
+      }
+
+      // Listener pour enregistrer une page
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn?.addEventListener('click', () => {
+        if (typeof addPage === 'function') addPage();
+        else console.error("⚠️ La fonction addPage() n'est pas définie !");
+      });
+
+      // Listeners admin
+      const deletePageBtn = document.getElementById('delete-page-btn');
+      deletePageBtn?.addEventListener('click', () => {
+        if (typeof deletePage === 'function') deletePage();
+        else console.error("⚠️ La fonction deletePage() n'est pas définie !");
+      });
+
+      const deleteUserBtn = document.getElementById('delete-user-btn');
+      deleteUserBtn?.addEventListener('click', () => {
+        if (typeof deleteUser === 'function') deleteUser();
+        else console.error("⚠️ La fonction deleteUser() n'est pas définie !");
+      });
+
+      // Charger les pages de l'utilisateur
+      if (typeof loadMyPages === 'function') loadMyPages();
+    });
+  </script>
+</body>
+</html>

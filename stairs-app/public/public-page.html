@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Page publique</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <script src="header.js"></script>
+
+  <div id="page-container">Chargement...</div>
+  <script>
+    async function loadPage() {
+      const params = new URLSearchParams(window.location.search);
+      const slug = params.get('slug');
+      const container = document.getElementById('page-container');
+
+      if (!slug) {
+        container.innerHTML = '<p>Page non trouvée.</p>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/pages/public/${encodeURIComponent(slug)}`);
+        if (!res.ok) {
+          container.innerHTML = '<p>Page non trouvée ou non publique.</p>';
+          return;
+        }
+        const p = await res.json();
+        container.innerHTML = `
+          <h1>${p.title || '(sans titre)'}</h1>
+          ${p.image ? `<img src="${p.image}" alt="${p.title||'image'}">` : ''}
+          <p>${p.content || ''}</p>
+          <small>Publié par : ${p.id_user}</small>
+        `;
+      } catch(err) {
+        console.error(err);
+        container.innerHTML = '<p>Erreur lors du chargement de la page.</p>';
+      }
+    }
+
+    loadPage();
+  </script>
+
+  <script>
+    // 🔹 Attendre que le DOM soit entièrement chargé avant d’attacher les événements
+    window.addEventListener('DOMContentLoaded', () => {
+      const saveBtn = document.getElementById('save-btn');
+      const deletePageBtn = document.getElementById('delete-page-btn');
+      const deleteUserBtn = document.getElementById('delete-user-btn');
+
+      // Sécurité : vérifier que les fonctions existent dans admin.js
+      saveBtn?.addEventListener('click', () => {
+        if (typeof savePage === 'function') savePage();
+        else console.error("⚠️ La fonction savePage() n'est pas définie !");
+      });
+
+      deletePageBtn?.addEventListener('click', () => {
+        if (typeof deletePage === 'function') deletePage();
+        else console.error("⚠️ La fonction deletePage() n'est pas définie !");
+      });
+
+      deleteUserBtn?.addEventListener('click', () => {
+        if (typeof deleteUser === 'function') deleteUser();
+        else console.error("⚠️ La fonction deleteUser() n'est pas définie !");
+      });
+    });
+  </script>
+
+</body>
+</html>

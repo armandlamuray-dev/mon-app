@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ajouter une page</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    form { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, textarea, button { width: 100%; margin: 10px 0; padding: 8px; }
+    button { background: #0077cc; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #005fa3; }
+  </style>
+</head>
+<body>
+  <script src="header.js"></script>
+
+  <h1>Ajouter une nouvelle page</h1>
+
+  <form id="add-page-form">
+    <input type="text" id="slug" placeholder="Slug (optionnel)">
+    <input type="text" id="title" placeholder="Titre" required>
+    <textarea id="content" placeholder="Contenu" required></textarea>
+    <input type="text" id="image" placeholder="URL de l’image">
+    <label><input type="checkbox" id="publicPage"> Page publique</label>
+    <button type="submit">Créer</button>
+  </form>
+
+  <button onclick="window.location.href='user.html'">⬅ Retour</button>
+
+  <script>
+    function makeSlug(str) {
+      return str.toString().normalize('NFKD')
+        .replace(/[^\w\s-]/g, '')
+        .trim().toLowerCase().replace(/\s+/g, '-');
+    }
+
+    document.getElementById('add-page-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.username) {
+        alert('Vous devez être connecté.');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      let slug = document.getElementById('slug').value.trim();
+      const title = document.getElementById('title').value.trim();
+      const content = document.getElementById('content').value.trim();
+      const image = document.getElementById('image').value.trim();
+      const isPublic = document.getElementById('publicPage').checked;
+
+      if (!title || !content) { alert('Titre et contenu obligatoires.'); return; }
+      if (!slug) slug = makeSlug(title);
+
+      const payload = { slug, title, content, image, username: user.username, public: isPublic };
+
+      try {
+        const res = await fetch('/user/add-page', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          console.error('Erreur add-page:', data || await res.text());
+          alert((data && data.message) || 'Erreur lors de la création de la page.');
+          return;
+        }
+
+        alert((data && data.message) || 'Page créée avec succès !');
+        window.location.href = 'user.html';
+      } catch (err) {
+        console.error('Erreur réseau add-page:', err);
+        alert('Impossible de contacter le serveur.');
+      }
+    });
+  </script>
+</body>
+</html>

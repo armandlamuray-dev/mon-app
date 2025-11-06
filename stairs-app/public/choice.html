@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Choix de mode - Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0d1b2a, #1b263b);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    button {
+      background-color: #1e90ff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 10px;
+      margin: 10px;
+      cursor: pointer;
+      font-size: 1.1em;
+      transition: background 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #63b3ed;
+    }
+
+    #logout {
+      background-color: #e74c3c;
+    }
+
+    #logout:hover {
+      background-color: #ff6b6b;
+    }
+  </style>
+</head>
+<body>
+  <script src="header.js"></script>
+  <h1>👑 Bonjour administrateur</h1>
+  <p>Que souhaitez-vous faire ?</p>
+  <div>
+    <button id="adminMode">Accéder au tableau de bord admin</button>
+    <button id="userMode">Utiliser le site en mode utilisateur</button>
+  </div>
+  <button id="logout">Se déconnecter</button>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    if (!user || user.role !== "admin") {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("adminMode").addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+
+    document.getElementById("userMode").addEventListener("click", () => {
+      window.location.href = "user.html";
+    });
+
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html>
