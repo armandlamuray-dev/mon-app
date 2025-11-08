@@ -3,6 +3,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
 
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
+  const email = document.getElementById("email").value;
 
   if (!username || !password) {
     alert("Merci de remplir tous les champs !");
@@ -13,7 +14,7 @@ document.getElementById("registerForm").addEventListener("submit", async (e) => 
     const res = await fetch("/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, email }),
     });
 
     const data = await res.json();

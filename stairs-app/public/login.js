@@ -31,7 +31,14 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     // stocker **toujours** l'objet user sous la même clef
     localStorage.setItem("user", JSON.stringify(user));
 
-    alert("Connexion réussie !");
+    res.json({ 
+      message: "Connexion réussie.", 
+      username: user.username, 
+      role: user.role, 
+      email: user.email, 
+      created_at: user.created_at 
+    });
+    
     if (data.role === "admin") {
       window.location.href = "choice.html";
     } else {
