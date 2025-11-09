@@ -147,7 +147,7 @@ app.post("/user/add-page", upload.single("image"), async (req, res) => {
       return res.status(400).json({ message: "Ce slug existe déjà." });
 
     let imagePath = null;
-    if (req.file) imagePath = req.file.path; // chemin du fichier uploadé
+    if (req.file) imagePath = req.file.path;
 
     await client.execute(
       "INSERT INTO pages (slug, title, content, image, id_user, public) VALUES (?, ?, ?, ?, ?, ?)",
@@ -161,7 +161,6 @@ app.post("/user/add-page", upload.single("image"), async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
-
 
 // 🔹 Récupérer toutes les pages (admin)
 app.get("/admin/pages", async (req, res) => {

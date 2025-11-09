@@ -73,6 +73,7 @@ async function addPage() {
 }
 
 
+
 // Afficher pages utilisateur
 async function loadMyPages() {
   const user = JSON.parse(localStorage.getItem("user"));
