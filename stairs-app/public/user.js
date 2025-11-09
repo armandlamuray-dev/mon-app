@@ -33,49 +33,45 @@ async function addPage() {
   const user = JSON.parse(localStorage.getItem("user"));
   if (!user || !user.username) return alert("Connectez-vous d’abord.");
 
+  const slug = document.getElementById("slug").value.trim() || makeSlug(document.getElementById("title").value);
   const title = document.getElementById("title").value.trim();
-  if (!title) return alert("Veuillez entrer un titre.");
+  const content = document.getElementById("content").value.trim();
+  const fileInput = document.getElementById("image");
 
-  const isPublic = document.getElementById("publicPage").value === "true";
+  if (!slug || !title || !content) return alert("Veuillez remplir tous les champs.");
+
+  const isPublic = document.getElementById("publicPage")?.checked || false;
 
   const formData = new FormData();
+  formData.append("slug", slug);
   formData.append("title", title);
+  formData.append("content", content);
   formData.append("username", user.username);
   formData.append("public", isPublic);
 
-  // image principale
-  const mainImageInput = document.getElementById("mainImage");
-  if (mainImageInput.files.length) formData.append("mainImage", mainImageInput.files[0]);
-
-  // sous-pages
-  const subpages = [];
-  const blocks = document.querySelectorAll(".subpage");
-  for (let i = 0; i < blocks.length; i++) {
-    const id = i+1;
-    const content = document.getElementById(`subContent_${id}`).value.trim();
-    const fileInput = document.getElementById(`subImage_${id}`);
-    if (!content) continue;
-
-    subpages.push({ sub_id: id, content, hasFile: fileInput.files.length>0 });
-    if (fileInput.files.length) formData.append(`subImage_${id}`, fileInput.files[0]);
+  if (fileInput && fileInput.files.length) {
+    formData.append("image", fileInput.files[0]);
   }
 
-  if (!subpages.length) return alert("Ajoutez au moins une sous-page.");
-
-  formData.append("subpages", JSON.stringify(subpages));
-
   try {
-    const res = await fetch("/user/add-page", { method:"POST", body: formData });
+    const res = await fetch("/user/add-page", { method: "POST", body: formData });
     const data = await res.json().catch(()=>null);
-    if (!res.ok) return alert(data?.message || "Erreur création page.");
+
+    if (!res.ok) return alert(data?.message || "Erreur lors de la création de la page.");
+
     alert(data.message || "Page créée !");
+    document.getElementById("slug").value = "";
     document.getElementById("title").value = "";
-    document.getElementById("mainImage").value = "";
-    document.getElementById("subpages-container").innerHTML = "";
-    addSubpageBlock(1);
+    document.getElementById("content").value = "";
+    if (fileInput) fileInput.value = "";
+
     loadMyPages();
-  } catch(e) { console.error(e); alert("Erreur réseau."); }
+  } catch(e) {
+    console.error(e);
+    alert("Erreur réseau.");
+  }
 }
+
 
 // Afficher pages utilisateur
 async function loadMyPages() {

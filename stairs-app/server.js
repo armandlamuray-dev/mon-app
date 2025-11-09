@@ -131,48 +131,37 @@ app.post("/login", async (req, res) => {
 // ===============================
 // 📝 ROUTE : Création de page (nouvelle version)
 // ===============================
-app.post("/user/add-page", upload.any(), async (req, res) => {
+app.post("/user/add-page", upload.single("image"), async (req, res) => {
   try {
-    const { title, username, public: isPublic, subpages } = req.body;
-    const subpagesParsed = JSON.parse(subpages);
-    let mainImagePath = null;
-    if (req.files && req.files.length) {
-      for (let f of req.files) {
-        if (f.fieldname === "mainImage") mainImagePath = f.path;
-        else {
-          const id = f.fieldname.split("_")[1];
-          const sub = subpagesParsed.find(s=>s.sub_id==id);
-          if (sub) sub.image = f.path;
-        }
-      }
-    }
-    const id = generateId();
-    await client.execute(
-      "INSERT INTO pages (id, title, id_user, public, main_image, subpages) VALUES (?, ?, ?, ?, ?, ?)",
-      [id, title, username, isPublic, mainImagePath, JSON.stringify(subpagesParsed)],
+    const { slug, title, content, username, public: isPublic } = req.body;
+    if (!slug || !title || !content || !username)
+      return res.status(400).json({ message: "Champs manquants." });
+
+    const check = await client.execute(
+      "SELECT slug FROM pages WHERE slug = ?",
+      [slug],
       { prepare: true }
     );
-    res.status(201).json({ message:"✅ Page enregistrée !" });
-  } catch(err) {
-    console.error(err);
-    res.status(500).json({ message:"Erreur serveur."});
-  }
-});
+    if (check.rowLength > 0)
+      return res.status(400).json({ message: "Ce slug existe déjà." });
 
-// 🔹 Récupérer toutes les pages d’un utilisateur
-app.get("/user/pages/:username", async (req, res) => {
-  const { username } = req.params;
-  try {
-    const result = await client.execute(
-      "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
-      [username]
+    // si un fichier est uploadé, on prend son chemin
+    let imagePath = null;
+    if (req.file) imagePath = req.file.path;
+
+    await client.execute(
+      "INSERT INTO pages (slug, title, content, image, id_user, public) VALUES (?, ?, ?, ?, ?, ?)",
+      [slug, title, content, imagePath, username, isPublic],
+      { prepare: true }
     );
-    res.json(result.rows);
+
+    res.status(201).json({ message: "✅ Page enregistrée avec succès." });
   } catch (err) {
-    console.error("Erreur récupération pages utilisateur :", err);
+    console.error(err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
+
 
 // 🔹 Récupérer toutes les pages (admin)
 app.get("/admin/pages", async (req, res) => {
