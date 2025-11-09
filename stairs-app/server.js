@@ -6,6 +6,8 @@ const cors = require("cors");
 const cassandra = require("cassandra-driver");
 const bcrypt = require("bcrypt");
 const path = require("path");
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); // dossier 'uploads' à créer
 
 const app = express();
 app.use(cors());
@@ -129,30 +131,31 @@ app.post("/login", async (req, res) => {
 // ===============================
 // 📝 ROUTE : Création de page (nouvelle version)
 // ===============================
-app.post("/user/add-page", async (req, res) => {
-  console.log("POST /user/add-page body:", req.body);
-  const { id, title, username, nb_subpages, public: isPublic } = req.body;
-
-  if (!id || !title || !username)
-    return res.status(400).json({ message: "Champs manquants." });
-
+app.post("/user/add-page", upload.any(), async (req, res) => {
   try {
-    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], {
-      prepare: true,
-    });
-    if (check.rowLength > 0)
-      return res.status(400).json({ message: "Cet ID existe déjà." });
-
+    const { title, username, public: isPublic, subpages } = req.body;
+    const subpagesParsed = JSON.parse(subpages);
+    let mainImagePath = null;
+    if (req.files && req.files.length) {
+      for (let f of req.files) {
+        if (f.fieldname === "mainImage") mainImagePath = f.path;
+        else {
+          const id = f.fieldname.split("_")[1];
+          const sub = subpagesParsed.find(s=>s.sub_id==id);
+          if (sub) sub.image = f.path;
+        }
+      }
+    }
+    const id = generateId();
     await client.execute(
-      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, ?, ?, ?, ?)",
-      [id, title, new Date(), username, nb_subpages || 0, isPublic],
+      "INSERT INTO pages (id, title, id_user, public, main_image, subpages) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, title, username, isPublic, mainImagePath, JSON.stringify(subpagesParsed)],
       { prepare: true }
     );
-
-    res.status(201).json({ message: "✅ Page enregistrée avec succès." });
-  } catch (err) {
-    console.error("Erreur lors de la création de la page :", err);
-    res.status(500).json({ message: "Erreur serveur." });
+    res.status(201).json({ message:"✅ Page enregistrée !" });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ message:"Erreur serveur."});
   }
 });
 

@@ -21,61 +21,60 @@ function addSubpageBlock(subId) {
     <h4>Sous-page ${subId}</h4>
     <label class="small">Contenu</label>
     <textarea id="subContent_${subId}" rows="3" placeholder="Contenu de la sous-page ${subId}"></textarea>
-    <label class="small">Image (URL)</label>
-    <input type="text" id="subImage_${subId}" placeholder="https://...">
+    <label class="small">Image (depuis PC)</label>
+    <input type="file" id="subImage_${subId}" accept="image/*">
   `;
   container.appendChild(div);
 }
 
+
 // Création de la page principale
 async function addPage() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username) {
-    alert("Connectez-vous d’abord.");
-    window.location.href = "/login.html";
-    return;
-  }
+  if (!user || !user.username) return alert("Connectez-vous d’abord.");
 
   const title = document.getElementById("title").value.trim();
-  const isPublic = document.getElementById("publicPage").value === "true";
   if (!title) return alert("Veuillez entrer un titre.");
 
+  const isPublic = document.getElementById("publicPage").value === "true";
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("username", user.username);
+  formData.append("public", isPublic);
+
+  // image principale
+  const mainImageInput = document.getElementById("mainImage");
+  if (mainImageInput.files.length) formData.append("mainImage", mainImageInput.files[0]);
+
+  // sous-pages
   const subpages = [];
   const blocks = document.querySelectorAll(".subpage");
-  blocks.forEach((block, i) => {
-    const sub_id = i + 1;
-    const content = document.getElementById(`subContent_${sub_id}`).value.trim();
-    const image = document.getElementById(`subImage_${sub_id}`).value.trim();
-    if (content) subpages.push({ sub_id, content, image: image || null });
-  });
+  for (let i = 0; i < blocks.length; i++) {
+    const id = i+1;
+    const content = document.getElementById(`subContent_${id}`).value.trim();
+    const fileInput = document.getElementById(`subImage_${id}`);
+    if (!content) continue;
 
-  if (subpages.length === 0) return alert("Ajoutez au moins une sous-page.");
+    subpages.push({ sub_id: id, content, hasFile: fileInput.files.length>0 });
+    if (fileInput.files.length) formData.append(`subImage_${id}`, fileInput.files[0]);
+  }
 
-  const payload = {
-    id: generateId(),
-    title,
-    username: user.username,
-    public: isPublic,
-    subpages
-  };
+  if (!subpages.length) return alert("Ajoutez au moins une sous-page.");
+
+  formData.append("subpages", JSON.stringify(subpages));
 
   try {
-    const res = await fetch("/user/add-page", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch("/user/add-page", { method:"POST", body: formData });
     const data = await res.json().catch(()=>null);
     if (!res.ok) return alert(data?.message || "Erreur création page.");
     alert(data.message || "Page créée !");
     document.getElementById("title").value = "";
+    document.getElementById("mainImage").value = "";
     document.getElementById("subpages-container").innerHTML = "";
     addSubpageBlock(1);
     loadMyPages();
-  } catch (e) {
-    console.error(e);
-    alert("Erreur réseau.");
-  }
+  } catch(e) { console.error(e); alert("Erreur réseau."); }
 }
 
 // Afficher pages utilisateur

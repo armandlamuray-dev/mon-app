@@ -23,25 +23,29 @@
   <p id="welcome"></p>
 
   <section>
-    <h2>📝 Créer une page</h2>
+  <h2>📝 Créer une page</h2>
 
-    <label class="small">Titre du groupe</label>
-    <input type="text" id="title" placeholder="Titre principal" required>
+  <label class="small">Titre du groupe</label>
+  <input type="text" id="title" placeholder="Titre principal" required>
 
-    <label class="small">Visibilité</label>
-    <select id="publicPage">
-      <option value="true">Publique</option>
-      <option value="false" selected>Privée</option>
-    </select>
+  <label class="small">Image principale</label>
+  <input type="file" id="mainImage" accept="image/*">
 
-    <h3>➕ Sous-pages</h3>
-    <div id="subpages-container"></div>
-    <button type="button" id="addSubpageBtn">➕ Ajouter une sous-page</button>
+  <label class="small">Visibilité</label>
+  <select id="publicPage">
+    <option value="true">Publique</option>
+    <option value="false" selected>Privée</option>
+  </select>
 
-    <div style="margin-top:12px;">
-      <button id="createPageBtn">Créer la page</button>
-    </div>
-  </section>
+  <h3>➕ Sous-pages</h3>
+  <div id="subpages-container"></div>
+  <button type="button" id="addSubpageBtn">➕ Ajouter une sous-page</button>
+
+  <div style="margin-top:12px;">
+    <button id="createPageBtn">Créer la page</button>
+  </div>
+</section>
+
 
   <section>
     <h2>📚 Mes pages</h2>
