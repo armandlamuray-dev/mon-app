@@ -62,10 +62,11 @@ async function ensureAdminExists() {
 app.post("/register", async (req, res) => {
   const { username, password, email } = req.body;
   if (!username || !password || !email)
-    return res.status(400).json({ message: "Nom d'utilisateur, mot de passe ou email manquant." });
+    return res
+      .status(400)
+      .json({ message: "Nom d'utilisateur, mot de passe ou email manquant." });
 
   try {
-    // Vérifie si l'utilisateur existe déjà
     const check = await client.execute(
       "SELECT username FROM users WHERE username = ?",
       [username],
@@ -112,7 +113,13 @@ app.post("/login", async (req, res) => {
     if (!match)
       return res.status(401).json({ message: "Mot de passe incorrect." });
 
-    res.json({ message: "Connexion réussie.", username: user.username, role: user.role,email: user.email, created_at: user.created_at  });
+    res.json({
+      message: "Connexion réussie.",
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      created_at: user.created_at,
+    });
   } catch (err) {
     console.error("Erreur connexion :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -120,27 +127,25 @@ app.post("/login", async (req, res) => {
 });
 
 // ===============================
-// 📝 ROUTE : Création de page
+// 📝 ROUTE : Création de page (nouvelle version)
 // ===============================
 app.post("/user/add-page", async (req, res) => {
   console.log("POST /user/add-page body:", req.body);
-  const { slug, title, content, image, public: isPublic, username } = req.body;
+  const { id, title, username, nb_subpages, public: isPublic } = req.body;
 
-  if (!slug || !title || !content || !username)
+  if (!id || !title || !username)
     return res.status(400).json({ message: "Champs manquants." });
 
   try {
-    const check = await client.execute(
-      "SELECT slug FROM pages WHERE slug = ?",
-      [slug],
-      { prepare: true }
-    );
+    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], {
+      prepare: true,
+    });
     if (check.rowLength > 0)
-      return res.status(400).json({ message: "Ce slug existe déjà." });
+      return res.status(400).json({ message: "Cet ID existe déjà." });
 
     await client.execute(
-      "INSERT INTO pages (slug, title, content, image, id_user, public) VALUES (?, ?, ?, ?, ?, ?)",
-      [slug, title, content, image, username, isPublic],
+      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, ?, ?, ?, ?)",
+      [id, title, new Date(), username, nb_subpages || 0, isPublic],
       { prepare: true }
     );
 
@@ -156,7 +161,7 @@ app.get("/user/pages/:username", async (req, res) => {
   const { username } = req.params;
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE id_user = ? ALLOW FILTERING",
+      "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
       [username]
     );
     res.json(result.rows);
@@ -178,9 +183,11 @@ app.get("/admin/pages", async (req, res) => {
 });
 
 // 🔹 Supprimer une page (admin)
-app.delete("/admin/delete-page/:slug", async (req, res) => {
+app.delete("/admin/delete-page/:id", async (req, res) => {
   try {
-    await client.execute("DELETE FROM pages WHERE slug = ?", [req.params.slug], { prepare: true });
+    await client.execute("DELETE FROM pages WHERE id = ?", [req.params.id], {
+      prepare: true,
+    });
     res.send("Page supprimée avec succès.");
   } catch (err) {
     console.error("Erreur suppression page :", err);
@@ -197,7 +204,7 @@ app.get("/pages/public", async (req, res) => {
     let query = "SELECT * FROM pages WHERE public = true";
     let params = [];
     if (username) {
-      query += " AND id_user = ?";
+      query += " AND username = ?";
       params.push(username);
     }
     query += " ALLOW FILTERING";
@@ -210,12 +217,11 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
-
-app.get("/pages/public/:slug", async (req, res) => {
+app.get("/pages/public/:id", async (req, res) => {
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE slug = ? AND public = true",
-      [req.params.slug],
+      "SELECT * FROM pages WHERE id = ? AND public = true",
+      [req.params.id],
       { prepare: true }
     );
 
@@ -229,15 +235,16 @@ app.get("/pages/public/:slug", async (req, res) => {
   }
 });
 
-// 🔹 Récupérer les détails d'une page pour l'admin
-app.get("/admin/page/:slug", async (req, res) => {
+// 🔹 Récupérer les détails d'une page (admin)
+app.get("/admin/page/:id", async (req, res) => {
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE slug = ?",
-      [req.params.slug],
+      "SELECT * FROM pages WHERE id = ?",
+      [req.params.id],
       { prepare: true }
     );
-    if (result.rowLength === 0) return res.status(404).json({ message: "Page introuvable." });
+    if (result.rowLength === 0)
+      return res.status(404).json({ message: "Page introuvable." });
     res.json(result.rows[0]);
   } catch (err) {
     console.error("Erreur récupération page admin :", err);
@@ -245,7 +252,7 @@ app.get("/admin/page/:slug", async (req, res) => {
   }
 });
 
-// 🔹 Récupérer les détails d'un utilisateur pour l'admin
+// 🔹 Récupérer les détails d'un utilisateur (admin)
 app.get("/admin/user/:username", async (req, res) => {
   try {
     const result = await client.execute(
@@ -253,7 +260,8 @@ app.get("/admin/user/:username", async (req, res) => {
       [req.params.username],
       { prepare: true }
     );
-    if (result.rowLength === 0) return res.status(404).json({ message: "Utilisateur introuvable." });
+    if (result.rowLength === 0)
+      return res.status(404).json({ message: "Utilisateur introuvable." });
     res.json(result.rows[0]);
   } catch (err) {
     console.error("Erreur récupération utilisateur admin :", err);
@@ -261,6 +269,18 @@ app.get("/admin/user/:username", async (req, res) => {
   }
 });
 
+// 🔹 Supprimer un utilisateur (admin)
+app.delete("/admin/delete-user/:username", async (req, res) => {
+  try {
+    await client.execute("DELETE FROM users WHERE username = ?", [req.params.username], {
+      prepare: true,
+    });
+    res.send("Utilisateur supprimé avec succès.");
+  } catch (err) {
+    console.error("Erreur suppression utilisateur :", err);
+    res.status(500).send("Erreur serveur.");
+  }
+});
 
 // ===============================
 // 🚀 Lancement du serveur

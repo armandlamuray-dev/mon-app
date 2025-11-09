@@ -1,125 +1,80 @@
-// 🔹 Afficher les détails d'une page de manière lisible
+// 🔹 Voir une page
 async function viewPage() {
-  const slug = document.getElementById("slug").value.trim();
+  const id = document.getElementById("slug").value.trim();
   const container = document.getElementById("page-details");
-  container.innerHTML = "";
-
-  if (!slug) return alert("Veuillez saisir un slug.");
-
+  if (!id) return alert("Saisissez un ID de page.");
   try {
-    const res = await fetch(`/admin/page/${encodeURIComponent(slug)}`);
-    if (!res.ok) {
-      const txt = await res.text();
-      return alert(`Erreur : ${txt}`);
-    }
-
-    const page = await res.json();
-
-    const html = `
-      <h3>${escapeHtml(page.title || "(sans titre)")}</h3>
-      ${page.image ? `<img src="${escapeHtml(page.image)}" alt="${escapeHtml(page.title || "image")}" style="max-width:200px;"><br>` : ""}
-      <p>${escapeHtml(page.content)}</p>
-      <small>Slug: ${escapeHtml(page.slug)} • Public: ${page.public ? "Oui" : "Non"}</small>
+    const res = await fetch(`/admin/page/${encodeURIComponent(id)}`);
+    if (!res.ok) return alert("Page introuvable.");
+    const p = await res.json();
+    container.innerHTML = `
+      <h3>${escapeHtml(p.title)}</h3>
+      <p><b>ID:</b> ${escapeHtml(p.id)}</p>
+      <p><b>Auteur:</b> ${escapeHtml(p.username)}</p>
+      <p><b>Public:</b> ${p.public ? "Oui" : "Non"}</p>
     `;
-    container.innerHTML = html;
-
   } catch (err) {
-    console.error("Erreur réseau viewPage :", err);
-    alert("Impossible de récupérer la page.");
+    alert("Erreur réseau.");
   }
 }
 
 // 🔹 Supprimer une page
 async function deletePage() {
-  const slug = document.getElementById("slug").value.trim();
-  if (!slug) return alert("Veuillez saisir un slug.");
-
+  const id = document.getElementById("slug").value.trim();
+  if (!id) return alert("Entrez un ID de page.");
   try {
-    const res = await fetch(`/admin/delete-page/${encodeURIComponent(slug)}`, { method: "DELETE" });
-    const txt = await res.text();
-    alert(txt);
-    document.getElementById("page-details").innerHTML = "Aucun détail à afficher.";
+    const res = await fetch(`/admin/delete-page/${encodeURIComponent(id)}`, { method: "DELETE" });
+    alert(await res.text());
   } catch (err) {
-    console.error("Erreur deletePage :", err);
-    alert("Impossible de supprimer la page.");
+    alert("Erreur suppression page.");
   }
 }
 
-// 🔹 Afficher les détails d'un utilisateur + ses pages publiques
+// 🔹 Voir un utilisateur
 async function viewUser() {
   const username = document.getElementById("userToDelete").value.trim();
   const container = document.getElementById("user-details");
-  container.innerHTML = "";
-
-  if (!username) return alert("Veuillez saisir un nom d'utilisateur.");
+  if (!username) return alert("Entrez un nom d'utilisateur.");
 
   try {
-    // 1️⃣ Récupérer l'utilisateur
     const resUser = await fetch(`/admin/user/${encodeURIComponent(username)}`);
-    if (!resUser.ok) {
-      const txt = await resUser.text();
-      return alert(`Erreur : ${txt}`);
-    }
-
+    if (!resUser.ok) return alert("Utilisateur introuvable.");
     const user = await resUser.json();
 
-    // 2️⃣ Récupérer ses pages publiques
     const resPages = await fetch(`/pages/public?username=${encodeURIComponent(username)}`);
-    let pages = [];
-    if (resPages.ok) pages = await resPages.json();
+    const pages = resPages.ok ? await resPages.json() : [];
 
-    // 3️⃣ Affichage
-    let html = `
-      <p>Nom d'utilisateur : <strong>${escapeHtml(user.username)}</strong></p>
-      <p>Rôle : <strong>${escapeHtml(user.role)}</strong></p>
+    container.innerHTML = `
+      <p><b>Nom :</b> ${escapeHtml(user.username)}</p>
+      <p><b>Rôle :</b> ${escapeHtml(user.role)}</p>
+      <h4>Pages publiques :</h4>
+      ${pages.length ? pages.map(p => `<li>${escapeHtml(p.title)} (${escapeHtml(p.id)})</li>`).join("") : "<p>Aucune.</p>"}
     `;
-
-    if (pages.length > 0) {
-      html += `<h4>Pages publiques :</h4><ul>`;
-      pages.forEach(p => {
-        html += `<li>${escapeHtml(p.title)} (slug: ${escapeHtml(p.slug)})</li>`;
-      });
-      html += `</ul>`;
-    } else {
-      html += `<p>Aucune page publique.</p>`;
-    }
-
-    container.innerHTML = html;
-
   } catch (err) {
-    console.error("Erreur réseau viewUser :", err);
-    alert("Impossible de récupérer l'utilisateur ou ses pages.");
+    alert("Erreur réseau utilisateur.");
   }
 }
 
 // 🔹 Supprimer un utilisateur
 async function deleteUser() {
   const username = document.getElementById("userToDelete").value.trim();
-  if (!username) return alert("Veuillez saisir un nom d'utilisateur.");
-
+  if (!username) return alert("Entrez un nom d'utilisateur.");
   try {
     const res = await fetch(`/admin/delete-user/${encodeURIComponent(username)}`, { method: "DELETE" });
-    const txt = await res.text();
-    alert(txt);
-    document.getElementById("user-details").innerHTML = "Aucun détail à afficher.";
+    alert(await res.text());
   } catch (err) {
-    console.error("Erreur deleteUser :", err);
-    alert("Impossible de supprimer l'utilisateur.");
+    alert("Erreur suppression utilisateur.");
   }
 }
 
-// 🔹 Sécurité : échappement HTML
 function escapeHtml(str) {
-  if (!str) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/"/g, "&quot;");
 }
 
-// 🔹 Attacher les événements après chargement du DOM
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("view-page-btn")?.addEventListener("click", viewPage);
   document.getElementById("delete-page-btn")?.addEventListener("click", deletePage);

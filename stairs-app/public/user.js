@@ -1,38 +1,26 @@
-// utilitaire : créer slug propre à partir du titre
-function makeSlug(str) {
-  return str
-    .toString()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-");
+ // 🔹 Génère un ID aléatoire de 16 caractères
+function generateId() {
+  return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
 }
 
-// 🔹 Enregistrer une page
+// 🔹 Ajouter une page
 async function addPage() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username) {
-    alert("Vous devez être connecté.");
-    window.location.href = "/login.html";
-    return;
-  }
+  if (!user || !user.username) return alert("Vous devez être connecté.");
 
-  const titleInput = document.getElementById("title");
-  const contentInput = document.getElementById("content");
-  const imageInput = document.getElementById("image");
-  const slugInput = document.getElementById("slug");
+  const title = document.getElementById("title").value.trim();
+  const isPublic = document.getElementById("publicPage").checked;
 
-  const title = titleInput.value.trim();
-  const content = contentInput.value.trim();
-  const image = imageInput.value.trim();
-  let slug = slugInput?.value.trim();
+  if (!title) return alert("Veuillez saisir un titre.");
 
-  if (!title || !content) { alert("Veuillez remplir tous les champs."); return; }
-  if (!slug) slug = makeSlug(title);
-
-  const isPublic = document.getElementById("publicPage")?.checked || false;
-  const payload = { slug, title, content, image, username: user.username, public: isPublic };
+  const payload = {
+    id: generateId(),
+    title,
+    username: user.username,
+    created_at: new Date(),
+    nb_subpages: 0,
+    public: isPublic
+  };
 
   try {
     const res = await fetch("/user/add-page", {
@@ -40,106 +28,87 @@ async function addPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+
     const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.message || "Erreur lors de la création.");
 
-    if (!res.ok) {
-      console.error("Erreur add-page:", data || await res.text());
-      alert((data && data.message) || "Erreur lors de la sauvegarde.");
-      return;
-    }
-
-    alert(data?.message || "Page enregistrée !");
-    titleInput.value = "";
-    contentInput.value = "";
-    imageInput.value = "";
-    if (slugInput) slugInput.value = "";
+    alert(data.message || "✅ Page créée !");
+    document.getElementById("title").value = "";
     await loadMyPages();
   } catch (err) {
-    console.error("Erreur réseau add-page:", err);
-    alert("Impossible de contacter le serveur.");
+    console.error("Erreur addPage:", err);
+    alert(err.message || "Erreur serveur.");
   }
 }
 
-// 🔹 Charger toutes les pages de l’utilisateur
+// 🔹 Charger les pages de l’utilisateur
 async function loadMyPages() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username) { window.location.href = "/login.html"; return; }
+  if (!user?.username) return (window.location.href = "/login.html");
 
   const container = document.getElementById("pages-list");
-  if (!container) return;
   container.innerHTML = "Chargement...";
 
   try {
     const res = await fetch(`/user/pages/${encodeURIComponent(user.username)}`);
-    if (!res.ok) {
-      const txt = await res.text().catch(() => null);
-      console.error("Erreur loadMyPages:", txt);
-      container.innerText = "Erreur lors du chargement des pages.";
-      return;
-    }
-
     const pages = await res.json();
-    container.innerHTML = "";
+    if (!res.ok) throw new Error("Erreur lors du chargement.");
 
     if (!pages || pages.length === 0) {
-      container.innerHTML = "<p>Aucune page pour le moment.</p>";
+      container.innerHTML = "<p>Aucune page.</p>";
       return;
     }
 
-    pages.forEach(p => {
+    container.innerHTML = "";
+    pages.forEach((p) => {
       const div = document.createElement("div");
       div.className = "page-card";
-      const preview = (p.content || "").length > 300 ? p.content.slice(0,300) + "…" : p.content;
       div.innerHTML = `
-        <h3>${escapeHtml(p.title || "(sans titre)")}</h3>
-        ${p.image ? `<img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.title||"image")}" width="200"><br>` : ""}
-        <p>${preview}</p>
-        <small>slug: ${escapeHtml(p.slug||"")} • public: ${p.public ? "Oui" : "Non"}</small>
+        <h3>${escapeHtml(p.title)}</h3>
+        <p><strong>ID:</strong> ${escapeHtml(p.id)}</p>
+        <p><strong>Public:</strong> ${p.public ? "Oui" : "Non"}</p>
+        <small>Créée le : ${new Date(p.created_at).toLocaleString()}</small>
       `;
       container.appendChild(div);
     });
   } catch (err) {
-    console.error("Erreur réseau loadMyPages:", err);
-    container.innerText = "Erreur réseau lors du chargement.";
+    console.error(err);
+    container.innerHTML = "<p>Erreur réseau.</p>";
   }
 }
 
-// 🔹 Sécurité : échappement HTML
+// 🔹 Supprimer une page
+async function deletePage() {
+  const slug = document.getElementById("slug").value.trim();
+  if (!slug) return alert("Entrez l'ID de la page à supprimer.");
+  try {
+    const res = await fetch(`/admin/delete-page/${encodeURIComponent(slug)}`, { method: "DELETE" });
+    alert(await res.text());
+    loadMyPages();
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la suppression.");
+  }
+}
+
+// 🔹 Supprimer un utilisateur
+async function deleteUser() {
+  const username = document.getElementById("userToDelete").value.trim();
+  if (!username) return alert("Entrez un nom d'utilisateur.");
+  try {
+    const res = await fetch(`/admin/delete-user/${encodeURIComponent(username)}`, { method: "DELETE" });
+    alert(await res.text());
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors de la suppression.");
+  }
+}
+
+// 🔹 Échappement HTML
 function escapeHtml(str) {
-  if (!str) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+    .replace(/"/g, "&quot;");
 }
-
-// 🔹 Déconnexion
-function logout() {
-  localStorage.removeItem("user");
-  window.location.href = "/login.html";
-}
-
-// 🔹 Initialisation
-window.addEventListener("DOMContentLoaded", () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username || !user.role) {
-    window.location.href = "/login.html";
-    return;
-  }
-
-  const welcomeEl = document.getElementById("welcome");
-  if (welcomeEl) welcomeEl.innerText = `Bienvenue, ${user.username} 👋`;
-
-  if (!document.getElementById("logoutBtn")) {
-    const btn = document.createElement("button");
-    btn.id = "logoutBtn";
-    btn.textContent = "Se déconnecter";
-    btn.style.margin = "10px 0";
-    btn.onclick = logout;
-    document.body.insertBefore(btn, document.body.firstChild);
-  }
-
-  loadMyPages();
-});

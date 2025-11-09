@@ -15,28 +15,31 @@
 <body>
   <script src="header.js"></script>
 
-  <h1>Ajouter une nouvelle page</h1>
+  <h1>Créer une nouvelle page principale</h1>
 
   <form id="add-page-form">
-    <input type="text" id="slug" placeholder="Slug (optionnel)">
-    <input type="text" id="title" placeholder="Titre" required>
-    <textarea id="content" placeholder="Contenu" required></textarea>
-    <input type="text" id="image" placeholder="URL de l’image">
+    <input type="text" id="title" placeholder="Titre de la page" required>
+    <input type="number" id="nbSubpages" placeholder="Nombre de sous-pages (min. 1)" min="1" value="1" required>
+    <textarea id="firstContent" placeholder="Contenu de la première sous-page" required></textarea>
+    <input type="text" id="firstImage" placeholder="Image (URL ou vide)">
     <label><input type="checkbox" id="publicPage"> Page publique</label>
-    <button type="submit">Créer</button>
+    <button type="submit">Créer la page</button>
   </form>
 
   <button onclick="window.location.href='user.html'">⬅ Retour</button>
 
   <script>
-    function makeSlug(str) {
-      return str.toString().normalize('NFKD')
-        .replace(/[^\w\s-]/g, '')
-        .trim().toLowerCase().replace(/\s+/g, '-');
+    // Génère un identifiant aléatoire de 16 caractères
+    function generateId(length = 16) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+      return result;
     }
 
     document.getElementById('add-page-form').addEventListener('submit', async e => {
       e.preventDefault();
+
       const user = JSON.parse(localStorage.getItem('user'));
       if (!user || !user.username) {
         alert('Vous devez être connecté.');
@@ -44,16 +47,30 @@
         return;
       }
 
-      let slug = document.getElementById('slug').value.trim();
+      const id = generateId();
       const title = document.getElementById('title').value.trim();
-      const content = document.getElementById('content').value.trim();
-      const image = document.getElementById('image').value.trim();
+      const nbSubpages = parseInt(document.getElementById('nbSubpages').value);
+      const content = document.getElementById('firstContent').value.trim();
+      const image = document.getElementById('firstImage').value.trim();
       const isPublic = document.getElementById('publicPage').checked;
 
-      if (!title || !content) { alert('Titre et contenu obligatoires.'); return; }
-      if (!slug) slug = makeSlug(title);
+      if (!title || !content || nbSubpages < 1) {
+        alert('Veuillez remplir correctement tous les champs.');
+        return;
+      }
 
-      const payload = { slug, title, content, image, username: user.username, public: isPublic };
+      const payload = {
+        id,
+        title,
+        username: user.username,
+        nb_subpages: nbSubpages,
+        public: isPublic,
+        firstSubpage: {
+          sub_id: 1,
+          content,
+          image
+        }
+      };
 
       try {
         const res = await fetch('/user/add-page', {

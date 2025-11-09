@@ -1,41 +1,35 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tableau de bord - Admin</title>
+  <meta charset="UTF-8">
+  <title>Administration</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #f4f7fa; margin: 0; padding: 20px; }
-    h1 { color: #1b263b; }
-    section { margin-bottom: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    input, textarea { width: 100%; margin: 5px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-    button { background-color: #1e90ff; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
-    button:hover { background-color: #63b3ed; }
-    #page-details, #user-details { background: #f0f0f0; padding: 10px; border-radius: 5px; }
-    img { max-width: 200px; display: block; margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f8f9fb; }
+    section { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input, button { margin: 5px 0; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #4caf50; color: white; cursor: pointer; }
+    button:hover { background: #45a049; }
   </style>
 </head>
 <body>
   <script src="header.js"></script>
 
-  <h1>👑 Tableau de bord administrateur</h1>
+  <h1>🛠️ Panneau d’administration</h1>
 
-  <!-- Section : suppression d'une page -->
   <section>
-    <h2>🗑️ Supprimer une page</h2>
-    <input type="text" id="slug" placeholder="Slug de la page à supprimer" />
-    <button id="view-page-btn">Voir la page</button>
-    <button id="delete-page-btn">Supprimer la page</button>
-    <div id="page-details">Aucun détail à afficher.</div>
+    <h2>🔍 Gérer une page</h2>
+    <input type="text" id="slug" placeholder="ID de la page" />
+    <button id="view-page-btn">Afficher</button>
+    <button id="delete-page-btn">Supprimer</button>
+    <div id="page-details"></div>
   </section>
 
-  <!-- Section : gestion des utilisateurs -->
   <section>
-    <h2>👥 Gérer les utilisateurs</h2>
-    <input type="text" id="userToDelete" placeholder="Nom d'utilisateur à supprimer" />
-    <button id="view-user-btn">Voir l'utilisateur</button>
-    <button id="delete-user-btn">Supprimer l'utilisateur</button>
-    <div id="user-details">Aucun détail à afficher.</div>
+    <h2>👥 Gérer un utilisateur</h2>
+    <input type="text" id="userToDelete" placeholder="Nom d'utilisateur" />
+    <button id="view-user-btn">Afficher</button>
+    <button id="delete-user-btn">Supprimer</button>
+    <div id="user-details"></div>
   </section>
 
   <script src="admin.js"></script>
