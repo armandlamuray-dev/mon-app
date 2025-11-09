@@ -31,16 +31,19 @@ function addSubpageBlock(subId) {
 // Création de la page principale
 async function addPage() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username) return alert("Connectez-vous d’abord.");
+  if (!user?.username) { alert("Connectez-vous."); return; }
 
-  const slug = document.getElementById("slug").value.trim() || makeSlug(document.getElementById("title").value);
-  const title = document.getElementById("title").value.trim();
-  const content = document.getElementById("content").value.trim();
+  const slugInput = document.getElementById("slug");
+  const titleInput = document.getElementById("title");
+  const contentInput = document.getElementById("content");
   const fileInput = document.getElementById("image");
 
-  if (!slug || !title || !content) return alert("Veuillez remplir tous les champs.");
-
+  const slug = slugInput.value.trim() || makeSlug(titleInput.value);
+  const title = titleInput.value.trim();
+  const content = contentInput.value.trim();
   const isPublic = document.getElementById("publicPage")?.checked || false;
+
+  if (!title || !content) { alert("Remplissez tous les champs."); return; }
 
   const formData = new FormData();
   formData.append("slug", slug);
@@ -49,26 +52,23 @@ async function addPage() {
   formData.append("username", user.username);
   formData.append("public", isPublic);
 
-  if (fileInput && fileInput.files.length) {
-    formData.append("image", fileInput.files[0]);
-  }
+  if (fileInput?.files?.length) formData.append("image", fileInput.files[0]);
 
   try {
     const res = await fetch("/user/add-page", { method: "POST", body: formData });
-    const data = await res.json().catch(()=>null);
-
-    if (!res.ok) return alert(data?.message || "Erreur lors de la création de la page.");
+    const data = await res.json().catch(() => null);
+    if (!res.ok) return alert(data?.message || "Erreur serveur");
 
     alert(data.message || "Page créée !");
-    document.getElementById("slug").value = "";
-    document.getElementById("title").value = "";
-    document.getElementById("content").value = "";
-    if (fileInput) fileInput.value = "";
+    slugInput.value = "";
+    titleInput.value = "";
+    contentInput.value = "";
+    fileInput.value = "";
 
     loadMyPages();
-  } catch(e) {
-    console.error(e);
-    alert("Erreur réseau.");
+  } catch (err) {
+    console.error("Erreur réseau addPage:", err);
+    alert("Impossible de contacter le serveur.");
   }
 }
 

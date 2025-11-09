@@ -134,6 +134,7 @@ app.post("/login", async (req, res) => {
 app.post("/user/add-page", upload.single("image"), async (req, res) => {
   try {
     const { slug, title, content, username, public: isPublic } = req.body;
+
     if (!slug || !title || !content || !username)
       return res.status(400).json({ message: "Champs manquants." });
 
@@ -145,19 +146,18 @@ app.post("/user/add-page", upload.single("image"), async (req, res) => {
     if (check.rowLength > 0)
       return res.status(400).json({ message: "Ce slug existe déjà." });
 
-    // si un fichier est uploadé, on prend son chemin
     let imagePath = null;
-    if (req.file) imagePath = req.file.path;
+    if (req.file) imagePath = req.file.path; // chemin du fichier uploadé
 
     await client.execute(
       "INSERT INTO pages (slug, title, content, image, id_user, public) VALUES (?, ?, ?, ?, ?, ?)",
-      [slug, title, content, imagePath, username, isPublic],
+      [slug, title, content, imagePath, username, isPublic === "true" || isPublic === true],
       { prepare: true }
     );
 
     res.status(201).json({ message: "✅ Page enregistrée avec succès." });
   } catch (err) {
-    console.error(err);
+    console.error("Erreur création page:", err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
