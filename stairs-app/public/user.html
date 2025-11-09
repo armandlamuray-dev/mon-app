@@ -5,22 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Espace utilisateur</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f7fa;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 { color: #1b263b; }
-    section { margin-bottom: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    input, textarea, select { width: 100%; margin: 8px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
-    .row { display: flex; gap: 10px; }
-    .row > * { flex: 1; }
-    button { background-color: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
-    button:hover { background-color: #45a049; }
-    #pages-list { margin-top: 20px; }
-    .page-card { background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ddd; }
-    label.small { font-size: 0.9em; color:#555; display:block; margin-top:6px;}
+    body { font-family: Arial, sans-serif; background: #f4f7fa; padding: 20px; margin: 0; }
+    section { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px; }
+    h1, h2 { color: #1b263b; }
+    input, textarea, select { width: 100%; margin: 6px 0; padding: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
+    .subpage { background: #fafafa; padding: 10px; border-radius: 8px; margin-top: 12px; border: 1px solid #ddd; }
+    button { background: #4caf50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #45a049; }
+    .small { font-size: 0.9em; color: #555; }
+    #pages-list .page-card { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -30,32 +23,24 @@
   <p id="welcome"></p>
 
   <section>
-    <h2>📝 Créer une page (groupe + première sous-page)</h2>
+    <h2>📝 Créer une page</h2>
 
     <label class="small">Titre du groupe</label>
-    <input type="text" id="title" placeholder="Titre de la page principale" required>
+    <input type="text" id="title" placeholder="Titre principal" required>
 
-    <div class="row">
-      <div>
-        <label class="small">Nombre de sous-pages</label>
-        <input type="number" id="nbSubpages" min="1" value="1">
-      </div>
-      <div>
-        <label class="small">Visibilité publique</label>
-        <select id="publicPage">
-          <option value="true">Publique</option>
-          <option value="false" selected>Privée</option>
-        </select>
-      </div>
+    <label class="small">Visibilité</label>
+    <select id="publicPage">
+      <option value="true">Publique</option>
+      <option value="false" selected>Privée</option>
+    </select>
+
+    <h3>➕ Sous-pages</h3>
+    <div id="subpages-container"></div>
+    <button type="button" id="addSubpageBtn">➕ Ajouter une sous-page</button>
+
+    <div style="margin-top:12px;">
+      <button id="createPageBtn">Créer la page</button>
     </div>
-
-    <h3 style="margin-top:12px">➜ Première sous-page (sub_id = 1)</h3>
-    <label class="small">Contenu (html / texte)</label>
-    <textarea id="firstContent" rows="4" placeholder="Contenu de la première sous-page"></textarea>
-    <label class="small">Image (URL)</label>
-    <input type="text" id="firstImage" placeholder="https://...">
-
-    <button id="createPageBtn">Créer la page</button>
   </section>
 
   <section>
@@ -64,48 +49,20 @@
   </section>
 
   <section id="admin-section" style="display:none;">
-    <h2>⚠️ Actions admin</h2>
-    <div class="row">
-      <input type="text" id="slug" placeholder="ID de la page">
+    <h2>⚙️ Admin</h2>
+    <div>
+      <input type="text" id="slug" placeholder="ID de la page" />
       <button id="view-page-btn">Voir</button>
       <button id="delete-page-btn">Supprimer</button>
     </div>
-    <div style="margin-top:10px" class="row">
-      <input type="text" id="userToDelete" placeholder="Nom d'utilisateur">
+    <div style="margin-top:10px">
+      <input type="text" id="userToDelete" placeholder="Utilisateur à supprimer" />
       <button id="delete-user-btn">Supprimer utilisateur</button>
     </div>
-    <pre id="page-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:12px;">Aucun détail sélectionné.</pre>
-    <pre id="user-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:12px;">Aucun utilisateur sélectionné.</pre>
+    <pre id="page-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:10px;">Aucun détail sélectionné.</pre>
+    <pre id="user-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:10px;">Aucun utilisateur sélectionné.</pre>
   </section>
 
   <script src="user.js"></script>
-  <script>
-    // initialisation et branchement boutons
-    window.addEventListener("DOMContentLoaded", () => {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (!user || !user.username || !user.role) {
-        window.location.href = "/login.html";
-        return;
-      }
-      document.getElementById("welcome").innerText = `Bienvenue, ${user.username} 👋`;
-      if (user.role === "admin") document.getElementById("admin-section").style.display = "block";
-
-      document.getElementById("createPageBtn").addEventListener("click", addPage);
-      document.getElementById("view-page-btn").addEventListener("click", async () => {
-        const id = document.getElementById("slug").value.trim();
-        if (!id) return alert("Saisissez un ID");
-        try {
-          const res = await fetch(`/admin/page/${encodeURIComponent(id)}`);
-          if (!res.ok) return alert("Page introuvable.");
-          const page = await res.json();
-          document.getElementById("page-details").textContent = JSON.stringify(page, null, 2);
-        } catch (e) { alert("Erreur réseau"); }
-      });
-      document.getElementById("delete-page-btn").addEventListener("click", deletePage);
-      document.getElementById("delete-user-btn").addEventListener("click", deleteUser);
-
-      loadMyPages();
-    });
-  </script>
 </body>
 </html>
