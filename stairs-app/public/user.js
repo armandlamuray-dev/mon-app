@@ -1,25 +1,39 @@
- // 🔹 Génère un ID aléatoire de 16 caractères
-function generateId() {
-  return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+// utilitaires
+function generateId(len = 16) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let s = "";
+  for (let i = 0; i < len; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+  return s;
 }
 
-// 🔹 Ajouter une page
+function escapeHtml(str) {
+  if (!str && str !== 0) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// Créer une page (groupe) + première sous-page
 async function addPage() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user || !user.username) return alert("Vous devez être connecté.");
+  if (!user || !user.username) { alert("Vous devez être connecté."); window.location.href = "/login.html"; return; }
 
   const title = document.getElementById("title").value.trim();
-  const isPublic = document.getElementById("publicPage").checked;
+  const nbSub = parseInt(document.getElementById("nbSubpages").value) || 1;
+  const isPublic = document.getElementById("publicPage").value === "true";
+  const firstContent = document.getElementById("firstContent").value.trim();
+  const firstImage = document.getElementById("firstImage").value.trim();
 
   if (!title) return alert("Veuillez saisir un titre.");
+  if (!firstContent) return alert("Veuillez saisir le contenu de la première sous-page.");
 
+  // génère id et payload conforme au server.js
+  const id = generateId(16);
   const payload = {
-    id: generateId(),
+    id,
     title,
     username: user.username,
-    created_at: new Date(),
-    nb_subpages: 0,
-    public: isPublic
+    nb_subpages: nbSub,
+    public: isPublic,
+    firstSubpage: { sub_id: 1, content: firstContent, image: firstImage || null }
   };
 
   try {
@@ -28,87 +42,71 @@ async function addPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.message || "Erreur lors de la création.");
-
-    alert(data.message || "✅ Page créée !");
+    const data = await res.json().catch(()=>null);
+    if (!res.ok) {
+      console.error("Erreur add-page:", data || await res.text());
+      return alert((data && data.message) || "Erreur création page");
+    }
+    alert(data.message || "Page créée");
+    // reset form
     document.getElementById("title").value = "";
+    document.getElementById("nbSubpages").value = "1";
+    document.getElementById("firstContent").value = "";
+    document.getElementById("firstImage").value = "";
     await loadMyPages();
   } catch (err) {
-    console.error("Erreur addPage:", err);
-    alert(err.message || "Erreur serveur.");
+    console.error(err);
+    alert("Impossible de contacter le serveur.");
   }
 }
 
-// 🔹 Charger les pages de l’utilisateur
+// Charger pages user
 async function loadMyPages() {
   const user = JSON.parse(localStorage.getItem("user"));
-  if (!user?.username) return (window.location.href = "/login.html");
-
+  if (!user || !user.username) { window.location.href = "/login.html"; return; }
   const container = document.getElementById("pages-list");
   container.innerHTML = "Chargement...";
-
   try {
     const res = await fetch(`/user/pages/${encodeURIComponent(user.username)}`);
+    if (!res.ok) { const txt = await res.text().catch(()=>null); console.error("Erreur", txt); container.innerText = "Erreur chargement"; return; }
     const pages = await res.json();
-    if (!res.ok) throw new Error("Erreur lors du chargement.");
-
-    if (!pages || pages.length === 0) {
-      container.innerHTML = "<p>Aucune page.</p>";
-      return;
-    }
-
     container.innerHTML = "";
-    pages.forEach((p) => {
+    if (!pages || pages.length===0) { container.innerHTML = "<p>Aucune page.</p>"; return; }
+    pages.forEach(p=>{
       const div = document.createElement("div");
       div.className = "page-card";
       div.innerHTML = `
-        <h3>${escapeHtml(p.title)}</h3>
+        <h3>${escapeHtml(p.title||"(sans titre)")}</h3>
         <p><strong>ID:</strong> ${escapeHtml(p.id)}</p>
+        <p><strong>Sous-pages:</strong> ${p.nb_subpages ?? 0}</p>
         <p><strong>Public:</strong> ${p.public ? "Oui" : "Non"}</p>
-        <small>Créée le : ${new Date(p.created_at).toLocaleString()}</small>
+        <small>Créée: ${p.created_at ? new Date(p.created_at).toLocaleString() : "—"}</small>
       `;
       container.appendChild(div);
     });
   } catch (err) {
     console.error(err);
-    container.innerHTML = "<p>Erreur réseau.</p>";
+    container.innerText = "Erreur réseau";
   }
 }
 
-// 🔹 Supprimer une page
+// Supprimer page admin
 async function deletePage() {
-  const slug = document.getElementById("slug").value.trim();
-  if (!slug) return alert("Entrez l'ID de la page à supprimer.");
+  const id = document.getElementById("slug").value.trim();
+  if (!id) return alert("Entrez l'ID de la page");
   try {
-    const res = await fetch(`/admin/delete-page/${encodeURIComponent(slug)}`, { method: "DELETE" });
+    const res = await fetch(`/admin/delete-page/${encodeURIComponent(id)}`, { method: "DELETE" });
     alert(await res.text());
     loadMyPages();
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la suppression.");
-  }
+  } catch (err) { console.error(err); alert("Erreur suppression"); }
 }
 
-// 🔹 Supprimer un utilisateur
+// Supprimer user admin
 async function deleteUser() {
   const username = document.getElementById("userToDelete").value.trim();
-  if (!username) return alert("Entrez un nom d'utilisateur.");
+  if (!username) return alert("Entrez le nom utilisateur");
   try {
     const res = await fetch(`/admin/delete-user/${encodeURIComponent(username)}`, { method: "DELETE" });
     alert(await res.text());
-  } catch (err) {
-    console.error(err);
-    alert("Erreur lors de la suppression.");
-  }
-}
-
-// 🔹 Échappement HTML
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  } catch (err) { console.error(err); alert("Erreur suppression utilisateur"); }
 }

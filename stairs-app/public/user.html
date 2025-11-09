@@ -11,52 +11,16 @@
       margin: 0;
       padding: 20px;
     }
-
-    h1 {
-      color: #1b263b;
-    }
-
-    section {
-      margin-bottom: 30px;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-
-    input, textarea {
-      width: 100%;
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      background-color: #45a049;
-    }
-
-    #pages-list {
-      margin-top: 20px;
-    }
-
-    .page-card {
-      background: #f9f9f9;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-    }
+    h1 { color: #1b263b; }
+    section { margin-bottom: 30px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, textarea, select { width: 100%; margin: 8px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    button { background-color: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+    button:hover { background-color: #45a049; }
+    #pages-list { margin-top: 20px; }
+    .page-card { background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #ddd; }
+    label.small { font-size: 0.9em; color:#555; display:block; margin-top:6px;}
   </style>
 </head>
 <body>
@@ -65,61 +29,80 @@
   <h1>👤 Mon espace</h1>
   <p id="welcome"></p>
 
-  <!-- Section création de page -->
   <section>
-    <h2>📝 Créer une page</h2>
-    <input type="text" id="title" placeholder="Titre de la page" />
-    <label>
-      <input type="checkbox" id="publicPage" /> Rendre cette page publique
-    </label>
-    <button id="save-btn">Créer la page</button>
+    <h2>📝 Créer une page (groupe + première sous-page)</h2>
+
+    <label class="small">Titre du groupe</label>
+    <input type="text" id="title" placeholder="Titre de la page principale" required>
+
+    <div class="row">
+      <div>
+        <label class="small">Nombre de sous-pages</label>
+        <input type="number" id="nbSubpages" min="1" value="1">
+      </div>
+      <div>
+        <label class="small">Visibilité publique</label>
+        <select id="publicPage">
+          <option value="true">Publique</option>
+          <option value="false" selected>Privée</option>
+        </select>
+      </div>
+    </div>
+
+    <h3 style="margin-top:12px">➜ Première sous-page (sub_id = 1)</h3>
+    <label class="small">Contenu (html / texte)</label>
+    <textarea id="firstContent" rows="4" placeholder="Contenu de la première sous-page"></textarea>
+    <label class="small">Image (URL)</label>
+    <input type="text" id="firstImage" placeholder="https://...">
+
+    <button id="createPageBtn">Créer la page</button>
   </section>
 
-  <!-- Section liste des pages -->
   <section>
     <h2>📚 Mes pages</h2>
     <div id="pages-list">Chargement...</div>
   </section>
 
-  <!-- Section admin -->
   <section id="admin-section" style="display:none;">
-    <h2>⚙️ Actions admin</h2>
-    <input type="text" id="slug" placeholder="ID de page" />
-    <button id="delete-page-btn">Supprimer une page</button>
-    <input type="text" id="userToDelete" placeholder="Nom d'utilisateur à supprimer" />
-    <button id="delete-user-btn">Supprimer un utilisateur</button>
+    <h2>⚠️ Actions admin</h2>
+    <div class="row">
+      <input type="text" id="slug" placeholder="ID de la page">
+      <button id="view-page-btn">Voir</button>
+      <button id="delete-page-btn">Supprimer</button>
+    </div>
+    <div style="margin-top:10px" class="row">
+      <input type="text" id="userToDelete" placeholder="Nom d'utilisateur">
+      <button id="delete-user-btn">Supprimer utilisateur</button>
+    </div>
+    <pre id="page-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:12px;">Aucun détail sélectionné.</pre>
+    <pre id="user-details" style="background:#fafafa;padding:10px;border-radius:6px;margin-top:12px;">Aucun utilisateur sélectionné.</pre>
   </section>
 
   <script src="user.js"></script>
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
-      const user = JSON.parse(localStorage.getItem('user'));
+    // initialisation et branchement boutons
+    window.addEventListener("DOMContentLoaded", () => {
+      const user = JSON.parse(localStorage.getItem("user"));
       if (!user || !user.username || !user.role) {
-        window.location.href = '/login.html';
+        window.location.href = "/login.html";
         return;
       }
+      document.getElementById("welcome").innerText = `Bienvenue, ${user.username} 👋`;
+      if (user.role === "admin") document.getElementById("admin-section").style.display = "block";
 
-      const welcomeEl = document.getElementById('welcome');
-      if (welcomeEl) welcomeEl.innerText = `Bienvenue, ${user.username} 👋`;
-
-      // Bouton déconnexion
-      if (!document.getElementById('logoutBtn')) {
-        const btn = document.createElement('button');
-        btn.id = 'logoutBtn';
-        btn.textContent = 'Se déconnecter';
-        btn.style.margin = '10px 0';
-        btn.onclick = () => {
-          localStorage.removeItem('user');
-          window.location.href = '/login.html';
-        };
-        document.body.insertBefore(btn, document.body.firstChild);
-      }
-
-      if (user.role === 'admin') document.getElementById('admin-section').style.display = 'block';
-
-      document.getElementById('save-btn')?.addEventListener('click', addPage);
-      document.getElementById('delete-page-btn')?.addEventListener('click', deletePage);
-      document.getElementById('delete-user-btn')?.addEventListener('click', deleteUser);
+      document.getElementById("createPageBtn").addEventListener("click", addPage);
+      document.getElementById("view-page-btn").addEventListener("click", async () => {
+        const id = document.getElementById("slug").value.trim();
+        if (!id) return alert("Saisissez un ID");
+        try {
+          const res = await fetch(`/admin/page/${encodeURIComponent(id)}`);
+          if (!res.ok) return alert("Page introuvable.");
+          const page = await res.json();
+          document.getElementById("page-details").textContent = JSON.stringify(page, null, 2);
+        } catch (e) { alert("Erreur réseau"); }
+      });
+      document.getElementById("delete-page-btn").addEventListener("click", deletePage);
+      document.getElementById("delete-user-btn").addEventListener("click", deleteUser);
 
       loadMyPages();
     });
