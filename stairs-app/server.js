@@ -6,8 +6,6 @@ const cors = require("cors");
 const cassandra = require("cassandra-driver");
 const bcrypt = require("bcrypt");
 const path = require("path");
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' }); // dossier 'uploads' à créer
 
 const app = express();
 app.use(cors());
@@ -64,9 +62,7 @@ async function ensureAdminExists() {
 app.post("/register", async (req, res) => {
   const { username, password, email } = req.body;
   if (!username || !password || !email)
-    return res
-      .status(400)
-      .json({ message: "Nom d'utilisateur, mot de passe ou email manquant." });
+    return res.status(400).json({ message: "Champs manquants." });
 
   try {
     const check = await client.execute(
@@ -75,17 +71,14 @@ app.post("/register", async (req, res) => {
       { prepare: true }
     );
     if (check.rowLength > 0)
-      return res.status(400).json({ message: "Ce nom d'utilisateur existe déjà." });
+      return res.status(400).json({ message: "Nom d'utilisateur déjà pris." });
 
     const hash = await bcrypt.hash(password, 10);
-    const createdAt = new Date();
-
     await client.execute(
-      "INSERT INTO users (username, password, role, email, created_at) VALUES (?, ?, ?, ?, ?)",
-      [username, hash, "user", email, createdAt],
+      "INSERT INTO users (username, password, role, email, created_at) VALUES (?, ?, ?, ?, toTimestamp(now()))",
+      [username, hash, "user", email],
       { prepare: true }
     );
-
     res.status(201).json({ message: "Utilisateur créé avec succès." });
   } catch (err) {
     console.error("Erreur inscription :", err);
@@ -98,22 +91,18 @@ app.post("/register", async (req, res) => {
 // ===============================
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-
   try {
     const result = await client.execute(
       "SELECT * FROM users WHERE username = ?",
       [username],
       { prepare: true }
     );
-
     if (result.rowLength === 0)
       return res.status(400).json({ message: "Utilisateur inconnu." });
 
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
-
-    if (!match)
-      return res.status(401).json({ message: "Mot de passe incorrect." });
+    if (!match) return res.status(401).json({ message: "Mot de passe incorrect." });
 
     res.json({
       message: "Connexion réussie.",
@@ -129,147 +118,54 @@ app.post("/login", async (req, res) => {
 });
 
 // ===============================
-// 📝 ROUTE : Création de page (nouvelle version)
+// 📝 ROUTE : Création de page
 // ===============================
-app.post("/user/add-page", upload.single("image"), async (req, res) => {
+app.post("/user/add-page", async (req, res) => {
+  const { id, title, username, public: isPublic, subpages } = req.body;
+  if (!id || !title || !username)
+    return res.status(400).json({ message: "Champs manquants." });
+
   try {
-    const { slug, title, content, username, public: isPublic } = req.body;
-
-    if (!slug || !title || !content || !username)
-      return res.status(400).json({ message: "Champs manquants." });
-
-    const check = await client.execute(
-      "SELECT slug FROM pages WHERE slug = ?",
-      [slug],
-      { prepare: true }
-    );
+    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], {
+      prepare: true,
+    });
     if (check.rowLength > 0)
-      return res.status(400).json({ message: "Ce slug existe déjà." });
+      return res.status(400).json({ message: "Cet ID existe déjà." });
 
-    let imagePath = null;
-    if (req.file) imagePath = req.file.path;
+    const nb_subpages = subpages?.length || 0;
 
     await client.execute(
-      "INSERT INTO pages (slug, title, content, image, id_user, public) VALUES (?, ?, ?, ?, ?, ?)",
-      [slug, title, content, imagePath, username, isPublic === "true" || isPublic === true],
+      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public, subpages) VALUES (?, ?, toTimestamp(now()), ?, ?, ?, ?)",
+      [id, title, username, nb_subpages, isPublic, JSON.stringify(subpages)],
       { prepare: true }
     );
 
     res.status(201).json({ message: "✅ Page enregistrée avec succès." });
   } catch (err) {
-    console.error("Erreur création page:", err);
+    console.error("Erreur lors de la création de la page :", err);
     res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-// 🔹 Récupérer toutes les pages (admin)
-app.get("/admin/pages", async (req, res) => {
-  try {
-    const result = await client.execute("SELECT * FROM pages");
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Erreur récupération pages admin :", err);
-    res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-// 🔹 Supprimer une page (admin)
-app.delete("/admin/delete-page/:id", async (req, res) => {
-  try {
-    await client.execute("DELETE FROM pages WHERE id = ?", [req.params.id], {
-      prepare: true,
-    });
-    res.send("Page supprimée avec succès.");
-  } catch (err) {
-    console.error("Erreur suppression page :", err);
-    res.status(500).send("Erreur serveur.");
   }
 });
 
 // ===============================
-// ⚙️ ROUTES PAGES PUBLIQUES
+// ⚙️ Récupération des pages
 // ===============================
-app.get("/pages/public", async (req, res) => {
-  const username = req.query.username;
-  try {
-    let query = "SELECT * FROM pages WHERE public = true";
-    let params = [];
-    if (username) {
-      query += " AND username = ?";
-      params.push(username);
-    }
-    query += " ALLOW FILTERING";
-
-    const result = await client.execute(query, params);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-app.get("/pages/public/:id", async (req, res) => {
+app.get("/user/pages/:username", async (req, res) => {
+  const { username } = req.params;
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE id = ? AND public = true",
-      [req.params.id],
-      { prepare: true }
+      "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
+      [username]
     );
-
-    if (result.rowLength === 0)
-      return res.status(404).json({ message: "Page publique introuvable." });
-
-    res.json(result.rows[0]);
+    // Parser les sous-pages pour affichage
+    const pages = result.rows.map((p) => ({
+      ...p,
+      subpages: p.subpages ? JSON.parse(p.subpages) : [],
+    }));
+    res.json(pages);
   } catch (err) {
-    console.error(err);
+    console.error("Erreur récupération pages utilisateur :", err);
     res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-// 🔹 Récupérer les détails d'une page (admin)
-app.get("/admin/page/:id", async (req, res) => {
-  try {
-    const result = await client.execute(
-      "SELECT * FROM pages WHERE id = ?",
-      [req.params.id],
-      { prepare: true }
-    );
-    if (result.rowLength === 0)
-      return res.status(404).json({ message: "Page introuvable." });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Erreur récupération page admin :", err);
-    res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-// 🔹 Récupérer les détails d'un utilisateur (admin)
-app.get("/admin/user/:username", async (req, res) => {
-  try {
-    const result = await client.execute(
-      "SELECT username, role FROM users WHERE username = ?",
-      [req.params.username],
-      { prepare: true }
-    );
-    if (result.rowLength === 0)
-      return res.status(404).json({ message: "Utilisateur introuvable." });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Erreur récupération utilisateur admin :", err);
-    res.status(500).json({ message: "Erreur serveur." });
-  }
-});
-
-// 🔹 Supprimer un utilisateur (admin)
-app.delete("/admin/delete-user/:username", async (req, res) => {
-  try {
-    await client.execute("DELETE FROM users WHERE username = ?", [req.params.username], {
-      prepare: true,
-    });
-    res.send("Utilisateur supprimé avec succès.");
-  } catch (err) {
-    console.error("Erreur suppression utilisateur :", err);
-    res.status(500).send("Erreur serveur.");
   }
 });
 
