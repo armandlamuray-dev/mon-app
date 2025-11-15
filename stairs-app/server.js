@@ -16,20 +16,21 @@ app.use(express.static(path.join(__dirname, "public")));
 // 🔗 Connexion à Astra DB
 // ===============================
 const client = new cassandra.Client({
-  cloud: { secureConnectBundle: "./secure-connect-base-de-donnee-app.zip" },
-  credentials: {
-    username: "RDyqPHaRPAIgkkXxQZrvMBpD",
-    password:
-      "BIyqJ,,7.Hb44pc-sJFDU1E,mstvcB5P,vzmv6jkAm0SKyPjoeRpnEzTv8ToI+Ato,nPz7CK9hbJ6l6RJBK.pkJGdWu,cmtPZ9I,fvOMBcdcB4mls_mWWQAW+ELnMmHv",
+  cloud: {
+    secureConnectBundle: "/etc/secrets/astra_bundle", // Utilisation du secret file Render
   },
-  keyspace: "appdata",
+  credentials: {
+    username: process.env.ASTRA_CLIENT_ID,      // Récupération depuis les variables d'environnement
+    password: process.env.ASTRA_CLIENT_SECRET,  // Récupération depuis les variables d'environnement
+  },
+  keyspace: process.env.ASTRA_KEYSPACE,         // Récupération depuis les variables d'environnement
 });
 
 client
   .connect()
   .then(async () => {
     console.log("✅ Connecté à Astra DB");
-    await ensureAdminExists();
+    await ensureAdminExists(); // ton code existant pour l'initialisation
   })
   .catch((err) => console.error("❌ Erreur de connexion :", err));
 
@@ -157,7 +158,6 @@ app.get("/user/pages/:username", async (req, res) => {
       "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
       [username]
     );
-    // Parser les sous-pages pour affichage
     const pages = result.rows.map((p) => ({
       ...p,
       subpages: p.subpages ? JSON.parse(p.subpages) : [],
