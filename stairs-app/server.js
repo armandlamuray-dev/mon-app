@@ -6,6 +6,7 @@ const cors = require("cors");
 const cassandra = require("cassandra-driver");
 const bcrypt = require("bcrypt");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(cors());
@@ -13,17 +14,28 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
+// 🔗 Vérification du bundle et des variables
+// ===============================
+if (!fs.existsSync("/etc/secrets/astra_bundle")) {
+  console.error("❌ Secure Connect Bundle introuvable à /etc/secrets/astra_bundle");
+}
+
+if (!process.env.ASTRA_CLIENT_ID || !process.env.ASTRA_CLIENT_SECRET || !process.env.ASTRA_KEYSPACE) {
+  console.error("❌ Une ou plusieurs variables d'environnement manquent !");
+} else {
+  console.log("✅ Variables et bundle vérifiés");
+}
+
+// ===============================
 // 🔗 Connexion à Astra DB
 // ===============================
 const client = new cassandra.Client({
-  cloud: {
-    secureConnectBundle: "/etc/secrets/astra_bundle", // Utilisation du secret file Render
-  },
+  cloud: { secureConnectBundle: "/etc/secrets/astra_bundle" },
   credentials: {
-    username: process.env.ASTRA_CLIENT_ID,      // Récupération depuis les variables d'environnement
-    password: process.env.ASTRA_CLIENT_SECRET,  // Récupération depuis les variables d'environnement
+    username: String(process.env.ASTRA_CLIENT_ID),
+    password: String(process.env.ASTRA_CLIENT_SECRET),
   },
-  keyspace: process.env.ASTRA_KEYSPACE,         // Récupération depuis les variables d'environnement
+  keyspace: String(process.env.ASTRA_KEYSPACE),
 });
 
 client
@@ -173,4 +185,4 @@ app.get("/user/pages/:username", async (req, res) => {
 // 🚀 Lancement du serveur
 // ===============================
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 test Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`));
