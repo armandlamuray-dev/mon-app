@@ -173,4 +173,4 @@ app.get("/user/pages/:username", async (req, res) => {
 // 🚀 Lancement du serveur
 // ===============================
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 test Serveur lancé sur http://localhost:${PORT}`));
