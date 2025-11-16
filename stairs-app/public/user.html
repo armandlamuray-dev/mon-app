@@ -13,7 +13,8 @@
     button { background: #4caf50; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
     button:hover { background: #45a049; }
     .small { font-size: 0.9em; color: #555; }
-    #pages-list .page-card { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 10px; }
+    #pages-list .page-card { background: #fff; border: 1px solid #ddd; padding: 12px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; }
+    #pages-list .page-card:hover { background: #f0f0f0; }
   </style>
 </head>
 <body>
@@ -23,29 +24,28 @@
   <p id="welcome"></p>
 
   <section>
-  <h2>📝 Créer une page</h2>
+    <h2>📝 Créer une page</h2>
 
-  <label class="small">Titre du groupe</label>
-  <input type="text" id="title" placeholder="Titre principal" required>
+    <label class="small">Titre du groupe</label>
+    <input type="text" id="title" placeholder="Titre principal" required>
 
-  <label class="small">Image principale</label>
-  <input type="file" id="mainImage" accept="image/*">
+    <label class="small">Image principale</label>
+    <input type="file" id="mainImage" accept="image/*">
 
-  <label class="small">Visibilité</label>
-  <select id="publicPage">
-    <option value="true">Publique</option>
-    <option value="false" selected>Privée</option>
-  </select>
+    <label class="small">Visibilité</label>
+    <select id="publicPage">
+      <option value="true">Publique</option>
+      <option value="false" selected>Privée</option>
+    </select>
 
-  <h3>➕ Sous-pages</h3>
-  <div id="subpages-container"></div>
-  <button type="button" id="addSubpageBtn">➕ Ajouter une sous-page</button>
+    <h3>➕ Sous-pages</h3>
+    <div id="subpages-container"></div>
+    <button type="button" id="addSubpageBtn">➕ Ajouter une sous-page</button>
 
-  <div style="margin-top:12px;">
-    <button id="createPageBtn">Créer la page</button>
-  </div>
-</section>
-
+    <div style="margin-top:12px;">
+      <button id="createPageBtn">Créer la page</button>
+    </div>
+  </section>
 
   <section>
     <h2>📚 Mes pages</h2>

@@ -32,9 +32,7 @@ window.addEventListener("DOMContentLoaded", () => {
     cursor: pointer;
     font-weight: bold;
   `;
-  homeBtn.onclick = () => {
-    window.location.href = "index.html";
-  };
+  homeBtn.onclick = () => window.location.href = "index.html";
   header.appendChild(homeBtn);
 
   // 👤 Si connecté → afficher le nom et le rôle
@@ -57,9 +55,7 @@ window.addEventListener("DOMContentLoaded", () => {
         cursor: pointer;
         font-weight: bold;
       `;
-      adminChoiceBtn.onclick = () => {
-        window.location.href = "choice.html";
-      };
+      adminChoiceBtn.onclick = () => window.location.href = "choice.html";
       header.appendChild(adminChoiceBtn);
     }
 

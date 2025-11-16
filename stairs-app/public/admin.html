@@ -9,10 +9,11 @@
     input, button { margin: 5px 0; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
     button { background: #4caf50; color: white; cursor: pointer; }
     button:hover { background: #45a049; }
+    #page-details, #user-details { margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 6px; }
   </style>
 </head>
 <body>
-  <script src="header.js"></script>
+  <script src="header.js" defer></script>
 
   <h1>🛠️ Panneau d’administration</h1>
 
@@ -21,7 +22,7 @@
     <input type="text" id="slug" placeholder="ID de la page" />
     <button id="view-page-btn">Afficher</button>
     <button id="delete-page-btn">Supprimer</button>
-    <div id="page-details"></div>
+    <div id="page-details">Détails de la page apparaîtront ici.</div>
   </section>
 
   <section>
@@ -29,9 +30,71 @@
     <input type="text" id="userToDelete" placeholder="Nom d'utilisateur" />
     <button id="view-user-btn">Afficher</button>
     <button id="delete-user-btn">Supprimer</button>
-    <div id="user-details"></div>
+    <div id="user-details">Détails de l'utilisateur apparaîtront ici.</div>
   </section>
 
-  <script src="admin.js"></script>
+  <script>
+    // Fonctions utilitaires pour fetch
+    async function fetchJSON(url, options) {
+      try {
+        const res = await fetch(url, options);
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw data || { message: 'Erreur serveur' };
+        return data;
+      } catch (err) {
+        console.error(err);
+        alert(err.message || 'Erreur réseau');
+        return null;
+      }
+    }
+
+    // Page
+    document.getElementById('view-page-btn').addEventListener('click', async () => {
+      const slug = document.getElementById('slug').value.trim();
+      if (!slug) return alert('Veuillez entrer l’ID de la page.');
+      const data = await fetchJSON(`/pages/public/${encodeURIComponent(slug)}`);
+      const details = document.getElementById('page-details');
+      if (!data) return details.innerHTML = 'Page non trouvée.';
+      details.innerHTML = `
+        <strong>Titre :</strong> ${data.title || '(sans titre)'}<br>
+        <strong>Auteur :</strong> ${data.username}<br>
+        <strong>Publique :</strong> ${data.public ? 'Oui' : 'Non'}<br>
+        <strong>Nb sous-pages :</strong> ${data.subpages?.length || 0}
+      `;
+    });
+
+    document.getElementById('delete-page-btn').addEventListener('click', async () => {
+      const slug = document.getElementById('slug').value.trim();
+      if (!slug) return alert('Veuillez entrer l’ID de la page.');
+      if (!confirm('Voulez-vous vraiment supprimer cette page ?')) return;
+      const data = await fetchJSON(`/admin/delete-page/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+      alert(data?.message || 'Page supprimée.');
+      document.getElementById('page-details').innerHTML = '';
+    });
+
+    // Utilisateur
+    document.getElementById('view-user-btn').addEventListener('click', async () => {
+      const username = document.getElementById('userToDelete').value.trim();
+      if (!username) return alert('Veuillez entrer le nom d’utilisateur.');
+      const data = await fetchJSON(`/admin/user/${encodeURIComponent(username)}`);
+      const details = document.getElementById('user-details');
+      if (!data) return details.innerHTML = 'Utilisateur non trouvé.';
+      details.innerHTML = `
+        <strong>Nom :</strong> ${data.username}<br>
+        <strong>Email :</strong> ${data.email}<br>
+        <strong>Rôle :</strong> ${data.role}<br>
+        <strong>Créé le :</strong> ${new Date(data.created_at).toLocaleString()}
+      `;
+    });
+
+    document.getElementById('delete-user-btn').addEventListener('click', async () => {
+      const username = document.getElementById('userToDelete').value.trim();
+      if (!username) return alert('Veuillez entrer le nom d’utilisateur.');
+      if (!confirm('Voulez-vous vraiment supprimer cet utilisateur ?')) return;
+      const data = await fetchJSON(`/admin/delete-user/${encodeURIComponent(username)}`, { method: 'DELETE' });
+      alert(data?.message || 'Utilisateur supprimé.');
+      document.getElementById('user-details').innerHTML = '';
+    });
+  </script>
 </body>
 </html>

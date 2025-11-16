@@ -1,4 +1,9 @@
 // ===============================
+// 🌱 Chargement des variables d'environnement
+// ===============================
+require("dotenv").config();
+
+// ===============================
 // 📦 Import des dépendances
 // ===============================
 const express = require("express");
@@ -14,37 +19,55 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
-// 🔗 Vérification du bundle et des variables
+// 🗂️ Sélection du bundle (LOCAL vs RENDER)
 // ===============================
-if (!fs.existsSync("/etc/secrets/astra_bundle")) {
-  console.error("❌ Secure Connect Bundle introuvable à /etc/secrets/astra_bundle");
+const localBundlePath = path.join(__dirname, "astra_bundle"); // LOCAL
+const renderBundlePath = "/etc/secrets/astra_bundle"; // RENDER
+
+// auto-detection : Render > Local
+const bundlePath = fs.existsSync(renderBundlePath)
+  ? renderBundlePath
+  : localBundlePath;
+
+// ===============================
+// 🔍 Vérification du bundle
+// ===============================
+if (!fs.existsSync(bundlePath)) {
+  console.error(" Secure Connect Bundle introuvable :", bundlePath);
+} else {
+  console.log(" Secure Connect Bundle trouvé :", bundlePath);
 }
 
+// ===============================
+// 🔗 Vérification des variables d'environnement
+// ===============================
 if (!process.env.ASTRA_CLIENT_ID || !process.env.ASTRA_CLIENT_SECRET || !process.env.ASTRA_KEYSPACE) {
-  console.error("❌ Une ou plusieurs variables d'environnement manquent !");
+  console.warn(
+    " Variables d'environnement Astra manquantes (OK en local, obligatoire sur Render)."
+  );
 } else {
-  console.log("✅ Variables et bundle vérifiés");
+  console.log(" Variables d'environnement OK.");
 }
 
 // ===============================
 // 🔗 Connexion à Astra DB
 // ===============================
 const client = new cassandra.Client({
-  cloud: { secureConnectBundle: "/etc/secrets/astra_bundle" },
+  cloud: { secureConnectBundle: bundlePath },
   credentials: {
-    username: String(process.env.ASTRA_CLIENT_ID),
-    password: String(process.env.ASTRA_CLIENT_SECRET),
+    username: process.env.ASTRA_CLIENT_ID || "local_id",
+    password: process.env.ASTRA_CLIENT_SECRET || "local_secret",
   },
-  keyspace: String(process.env.ASTRA_KEYSPACE),
+  keyspace: process.env.ASTRA_KEYSPACE || "local_keyspace",
 });
 
 client
   .connect()
   .then(async () => {
-    console.log("✅ Connecté à Astra DB");
-    await ensureAdminExists(); // ton code existant pour l'initialisation
+    console.log(" Connecté à Astra DB (ou tentative locale)");
+    await ensureAdminExists();
   })
-  .catch((err) => console.error("❌ Erreur de connexion :", err));
+  .catch((err) => console.error(" Erreur de connexion :", err));
 
 // ===============================
 // 👑 Vérifie ou crée un compte admin
@@ -60,9 +83,9 @@ async function ensureAdminExists() {
         ["admin", hash, "admin"],
         { prepare: true }
       );
-      console.log("👑 Compte admin créé (admin / admin123)");
+      console.log(" Compte admin créé (admin / admin123)");
     } else {
-      console.log("👑 Compte admin déjà existant");
+      console.log(" Compte admin déjà existant");
     }
   } catch (err) {
     console.error("Erreur lors de la vérification de l’admin :", err);
@@ -92,7 +115,7 @@ app.post("/register", async (req, res) => {
       [username, hash, "user", email],
       { prepare: true }
     );
-    res.status(201).json({ message: "Utilisateur créé avec succès." });
+    res.status(201).json({ message: " Page utilisateur créée avec succès." });
   } catch (err) {
     console.error("Erreur inscription :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -153,7 +176,7 @@ app.post("/user/add-page", async (req, res) => {
       { prepare: true }
     );
 
-    res.status(201).json({ message: "✅ Page enregistrée avec succès." });
+    res.status(201).json({ message: " Page enregistrée avec succès." });
   } catch (err) {
     console.error("Erreur lors de la création de la page :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -161,7 +184,7 @@ app.post("/user/add-page", async (req, res) => {
 });
 
 // ===============================
-// ⚙️ Récupération des pages
+// ⚙️ Récupération des pages utilisateur
 // ===============================
 app.get("/user/pages/:username", async (req, res) => {
   const { username } = req.params;
@@ -182,7 +205,54 @@ app.get("/user/pages/:username", async (req, res) => {
 });
 
 // ===============================
+// 📢 ROUTE : Récupération d'une page publique par id
+// ===============================
+app.get("/pages/public/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await client.execute(
+      "SELECT * FROM pages WHERE id = ? AND public = true",
+      [id],
+      { prepare: true }
+    );
+
+    if (result.rowLength === 0)
+      return res.status(404).json({ message: "Page non trouvée ou non publique." });
+
+    const page = result.rows[0];
+    page.subpages = page.subpages ? JSON.parse(page.subpages) : [];
+    res.json(page);
+  } catch (err) {
+    console.error("Erreur récupération page publique :", err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
+
+// ===============================
+// 📢 NOUVELLE ROUTE : Récupération de toutes les pages publiques
+// ===============================
+app.get("/pages/public", async (req, res) => {
+  try {
+    const result = await client.execute(
+      "SELECT * FROM pages WHERE public = true ALLOW FILTERING"
+    );
+
+    const pages = result.rows.map(p => ({
+      ...p,
+      subpages: p.subpages ? JSON.parse(p.subpages) : [],
+    }));
+
+    res.json(pages);
+  } catch (err) {
+    console.error("Erreur récupération pages publiques :", err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
+
+// ===============================
 // 🚀 Lancement du serveur
 // ===============================
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(` Serveur lancé sur http://localhost:${PORT}`)
+);

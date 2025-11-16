@@ -5,26 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>STAIRS - Accueil</title>
   <style>
-    /* (garde ton CSS existant, inchangé) */
-    body { font-family: Arial, sans-serif; background: linear-gradient(135deg,#0d1b2a,#1b263b); color:#fff; display:flex;flex-direction:column;align-items:center;padding:20px;margin:0; }
-    h1{font-size:2.5em;margin-bottom:.5em;text-align:center}
-    p{max-width:600px;line-height:1.5em;opacity:.9;text-align:center}
-    .buttons{margin:2em 0}
-    a{ text-decoration:none;color:#fff;background:#1e90ff;padding:10px 20px;border-radius:8px;margin:0 10px;transition:background .2s;}
-    a:hover{background:#63b3ed}
-    h2{margin-top:2em;text-align:center;color:#f0f0f0}
-    #public-pages{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-top:1em;width:100%;max-width:1000px}
-    .page-card{background:#1b263b;color:#fff;border-radius:8px;padding:15px;width:250px;box-shadow:0 4px 8px rgba(0,0,0,.3);transition:transform .2s}
-    .page-card:hover{transform:translateY(-5px)}
-    .page-card img{max-width:100%;border-radius:5px;margin-bottom:10px}
-    .page-card h3{margin:0 0 10px 0;font-size:1.2em}
-    .page-card p{font-size:.95em;line-height:1.2em;max-height:6em;overflow:hidden}
-    .page-card small{opacity:.7;display:block;margin-top:5px}
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg,#0d1b2a,#1b263b);
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:20px;
+      margin:0;
+    }
+    h1 {
+      font-size:2.5em;
+      margin-bottom:.5em;
+      text-align:center;
+    }
+    p {
+      max-width:600px;
+      line-height:1.5em;
+      opacity:.9;
+      text-align:center;
+    }
+    .buttons {
+      margin:2em 0;
+    }
+    a {
+      text-decoration:none;
+      color:#fff;
+      background:#1e90ff;
+      padding:10px 20px;
+      border-radius:8px;
+      margin:0 10px;
+      transition:background .2s;
+    }
+    a:hover { background:#63b3ed; }
+    h2 {
+      margin-top:2em;
+      text-align:center;
+      color:#f0f0f0;
+    }
+    #public-pages {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:20px;
+      margin-top:1em;
+      width:100%;
+      max-width:1000px;
+    }
+    .page-card {
+      background:#1b263b;
+      color:#fff;
+      border-radius:8px;
+      padding:15px;
+      width:250px;
+      box-shadow:0 4px 8px rgba(0,0,0,.3);
+      transition:transform .2s;
+      cursor:pointer;
+    }
+    .page-card:hover { transform:translateY(-5px); }
+    .page-card img {
+      max-width:100%;
+      border-radius:5px;
+      margin-bottom:10px;
+    }
+    .page-card h3 { margin:0 0 10px 0; font-size:1.2em; }
+    .page-card p {
+      font-size:.95em;
+      line-height:1.2em;
+      max-height:6em;
+      overflow:hidden;
+    }
+    .page-card small { opacity:.7; display:block; margin-top:5px; }
   </style>
 </head>
 <body>
 
-  <!-- header.js (ATTENTION: path = "header.js" car public/ est servi comme racine) -->
+  <!-- Header injecté dynamiquement -->
   <script src="header.js" defer></script>
 
   <h1>Bienvenue sur <strong>STAIRS</strong></h1>
@@ -38,7 +95,6 @@
   <h2>🌐 Pages publiques</h2>
   <div id="public-pages">Chargement...</div>
 
-  <!-- Script principal : ATTEND le DOM complet (header injecté) -->
   <script>
     async function loadPublicPages() {
       const container = document.getElementById('public-pages');
@@ -53,6 +109,7 @@
           container.innerHTML = '<p>Aucune page publique pour le moment.</p>';
           return;
         }
+
         container.innerHTML = '';
         pages.forEach(p => {
           const div = document.createElement('div');
@@ -64,9 +121,7 @@
             <p>${preview}</p>
             <small>Publié par : ${p.id_user}</small>
           `;
-          div.onclick = () => {
-            window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
-          };
+          div.onclick = () => window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
           container.appendChild(div);
         });
       } catch (err) {
@@ -76,10 +131,8 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      // On attend que header.js ait eu le temps d'injecter le header
       loadPublicPages();
 
-      // mettre à jour les boutons Auth (login/register -> mon espace / logout)
       const authButtons = document.getElementById('auth-buttons');
       const user = JSON.parse(localStorage.getItem('user'));
       if (user) {
@@ -94,5 +147,6 @@
       }
     });
   </script>
+
 </body>
 </html>

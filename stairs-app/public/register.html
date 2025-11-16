@@ -74,7 +74,7 @@
   <form id="registerForm">
     <input type="text" id="username" placeholder="Nom d’utilisateur" required>
     <input type="password" id="password" placeholder="Mot de passe" required>
-    <input type="email" id="email" placeholder="Adresse email" required />
+    <input type="email" id="email" placeholder="Adresse email" required>
     <button type="submit">S’inscrire</button>
   </form>
 
@@ -83,7 +83,7 @@
   <script src="register.js"></script>
 
   <script>
-    // 🔹 Gestion du header dynamique
+    // 🔹 Header dynamique uniforme
     const header = document.getElementById('header');
     const user = JSON.parse(localStorage.getItem('user'));
 
@@ -102,29 +102,40 @@
   </script>
 
   <script>
-    // 🔹 Attendre que le DOM soit entièrement chargé avant d’attacher les événements
-    window.addEventListener('DOMContentLoaded', () => {
-      const saveBtn = document.getElementById('save-btn');
-      const deletePageBtn = document.getElementById('delete-page-btn');
-      const deleteUserBtn = document.getElementById('delete-user-btn');
+    // 🔹 Gestion de l'inscription
+    document.getElementById('registerForm').addEventListener('submit', async e => {
+      e.preventDefault();
 
-      // Sécurité : vérifier que les fonctions existent dans admin.js
-      saveBtn?.addEventListener('click', () => {
-        if (typeof savePage === 'function') savePage();
-        else console.error("⚠️ La fonction savePage() n'est pas définie !");
-      });
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const email = document.getElementById('email').value.trim();
 
-      deletePageBtn?.addEventListener('click', () => {
-        if (typeof deletePage === 'function') deletePage();
-        else console.error("⚠️ La fonction deletePage() n'est pas définie !");
-      });
+      if (!username || !password || !email) {
+        alert('Veuillez remplir tous les champs.');
+        return;
+      }
 
-      deleteUserBtn?.addEventListener('click', () => {
-        if (typeof deleteUser === 'function') deleteUser();
-        else console.error("⚠️ La fonction deleteUser() n'est pas définie !");
-      });
+      try {
+        const res = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, email })
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          alert((data && data.message) || 'Erreur lors de l’inscription.');
+          return;
+        }
+
+        alert((data && data.message) || 'Compte créé avec succès !');
+        window.location.href = 'login.html';
+      } catch (err) {
+        console.error('Erreur réseau inscription:', err);
+        alert('Impossible de contacter le serveur.');
+      }
     });
   </script>
-
 </body>
 </html>

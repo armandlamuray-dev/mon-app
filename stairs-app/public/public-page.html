@@ -12,30 +12,40 @@
   <script src="header.js"></script>
 
   <div id="page-container">Chargement...</div>
+
   <script>
     async function loadPage() {
       const params = new URLSearchParams(window.location.search);
-      const id = params.get('id');
+      const id = params.get('slug'); // On utilise "slug" pour être cohérent avec index.html
       const container = document.getElementById('page-container');
 
-      if (!id) return (container.innerHTML = '<p>Page non trouvée.</p>');
+      if (!id) {
+        container.innerHTML = '<p>Page non trouvée.</p>';
+        return;
+      }
 
       try {
         const res = await fetch(`/pages/public/${encodeURIComponent(id)}`);
-        if (!res.ok) return (container.innerHTML = '<p>Page non trouvée ou non publique.</p>');
+        if (!res.ok) {
+          container.innerHTML = '<p>Page non trouvée ou non publique.</p>';
+          return;
+        }
 
         const p = await res.json();
         container.innerHTML = `
           <h1>${p.title || '(sans titre)'}</h1>
           <p><strong>Auteur :</strong> ${p.username}</p>
-          <small>Créée le : ${new Date(p.created_at).toLocaleString()}</small>
+          <small>Créée le : ${p.created_at ? new Date(p.created_at).toLocaleString() : 'Inconnue'}</small>
+          ${p.image ? `<img src="${p.image}" alt="${p.title || 'Image'}">` : ''}
+          <div>${p.content || ''}</div>
         `;
       } catch (err) {
-        console.error(err);
+        console.error('Erreur chargement page publique:', err);
         container.innerHTML = '<p>Erreur lors du chargement.</p>';
       }
     }
-    loadPage();
+
+    window.addEventListener('DOMContentLoaded', loadPage);
   </script>
 </body>
 </html>

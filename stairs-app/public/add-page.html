@@ -59,17 +59,19 @@
         return;
       }
 
+      // Adaptation backend : subpages tableau
       const payload = {
         id,
         title,
         username: user.username,
-        nb_subpages: nbSubpages,
         public: isPublic,
-        firstSubpage: {
-          sub_id: 1,
-          content,
-          image
-        }
+        subpages: [
+          {
+            sub_id: 1,
+            content,
+            image
+          }
+        ]
       };
 
       try {
