@@ -23,27 +23,20 @@ app.use(express.static(path.join(__dirname, "public")));
 // ===============================
 let client;
 
-const renderBundlePath = "/etc/secrets/astra_bundle";
-const localBundlePath = path.join(__dirname, "astra_bundle");
-
 if (process.env.ASTRA_CLIENT_ID && process.env.ASTRA_CLIENT_SECRET && process.env.ASTRA_KEYSPACE) {
-  // Render : on utilise le secret file si présent
-  if (fs.existsSync(renderBundlePath)) {
-    client = new cassandra.Client({
-      cloud: { secureConnectBundle: renderBundlePath },
-      credentials: {
-        username: process.env.ASTRA_CLIENT_ID,
-        password: process.env.ASTRA_CLIENT_SECRET,
-      },
-      keyspace: process.env.ASTRA_KEYSPACE,
-    });
-    console.log("Utilisation du bundle Render Astra.");
-  } else {
-    console.error("Bundle Render introuvable :", renderBundlePath);
-    process.exit(1);
-  }
+  // Render : connexion via variables d'environnement uniquement
+  client = new cassandra.Client({
+    cloud: {}, // PAS de secureConnectBundle sur Render
+    credentials: {
+      username: process.env.ASTRA_CLIENT_ID,
+      password: process.env.ASTRA_CLIENT_SECRET,
+    },
+    keyspace: process.env.ASTRA_KEYSPACE,
+  });
+  console.log("Connexion Astra Render via variables d'environnement (sans bundle).");
 } else {
   // Connexion locale via bundle
+  const localBundlePath = path.join(__dirname, "astra_bundle");
   if (!fs.existsSync(localBundlePath)) {
     console.error("Bundle local introuvable :", localBundlePath);
     process.exit(1);
@@ -91,7 +84,7 @@ async function ensureAdminExists() {
 }
 
 // ===============================
-// 🔑 ROUTES (inchangées)
+// 🔑 ROUTES
 // ===============================
 
 // Inscription
