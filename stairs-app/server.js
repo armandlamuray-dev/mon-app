@@ -19,55 +19,46 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
-// 🗂️ Sélection du bundle (LOCAL vs RENDER)
+// 🔗 Connexion à Cassandra (Render vs local)
 // ===============================
-const localBundlePath = path.join(__dirname, "astra_bundle"); // LOCAL
-const renderBundlePath = "/etc/secrets/astra_bundle"; // RENDER
+let client;
 
-// auto-detection : Render > Local
-const bundlePath = fs.existsSync(renderBundlePath)
-  ? renderBundlePath
-  : localBundlePath;
-
-// ===============================
-// 🔍 Vérification du bundle
-// ===============================
-if (!fs.existsSync(bundlePath)) {
-  console.error(" Secure Connect Bundle introuvable :", bundlePath);
+if (process.env.ASTRA_CLIENT_ID && process.env.ASTRA_CLIENT_SECRET && process.env.ASTRA_KEYSPACE) {
+  // Connexion via variables d'environnement (Render)
+  client = new cassandra.Client({
+    cloud: { secureConnectBundle: null }, // PAS de bundle sur Render
+    credentials: {
+      username: process.env.ASTRA_CLIENT_ID,
+      password: process.env.ASTRA_CLIENT_SECRET,
+    },
+    keyspace: process.env.ASTRA_KEYSPACE,
+  });
+  console.log("Utilisation des variables d'environnement Astra (Render).");
 } else {
-  console.log(" Secure Connect Bundle trouvé :", bundlePath);
+  // Connexion locale via bundle
+  const localBundlePath = path.join(__dirname, "astra_bundle");
+  if (!fs.existsSync(localBundlePath)) {
+    console.error("Bundle local introuvable :", localBundlePath);
+    process.exit(1);
+  }
+  client = new cassandra.Client({
+    cloud: { secureConnectBundle: localBundlePath },
+    credentials: {
+      username: "local_id",
+      password: "local_secret",
+    },
+    keyspace: "local_keyspace",
+  });
+  console.log("Connexion locale via bundle trouvé :", localBundlePath);
 }
 
-// ===============================
-// 🔗 Vérification des variables d'environnement
-// ===============================
-if (!process.env.ASTRA_CLIENT_ID || !process.env.ASTRA_CLIENT_SECRET || !process.env.ASTRA_KEYSPACE) {
-  console.warn(
-    " Variables d'environnement Astra manquantes (OK en local, obligatoire sur Render)."
-  );
-} else {
-  console.log(" Variables d'environnement OK.");
-}
-
-// ===============================
-// 🔗 Connexion à Astra DB
-// ===============================
-const client = new cassandra.Client({
-  cloud: { secureConnectBundle: bundlePath },
-  credentials: {
-    username: process.env.ASTRA_CLIENT_ID || "local_id",
-    password: process.env.ASTRA_CLIENT_SECRET || "local_secret",
-  },
-  keyspace: process.env.ASTRA_KEYSPACE || "local_keyspace",
-});
-
-client
-  .connect()
+// Connexion à Cassandra
+client.connect()
   .then(async () => {
-    console.log(" Connecté à Astra DB (ou tentative locale)");
+    console.log("Connecté à Cassandra");
     await ensureAdminExists();
   })
-  .catch((err) => console.error(" Erreur de connexion :", err));
+  .catch(err => console.error("Erreur de connexion :", err));
 
 // ===============================
 // 👑 Vérifie ou crée un compte admin
@@ -83,9 +74,9 @@ async function ensureAdminExists() {
         ["admin", hash, "admin"],
         { prepare: true }
       );
-      console.log(" Compte admin créé (admin / admin123)");
+      console.log("Compte admin créé (admin / admin123)");
     } else {
-      console.log(" Compte admin déjà existant");
+      console.log("Compte admin déjà existant");
     }
   } catch (err) {
     console.error("Erreur lors de la vérification de l’admin :", err);
@@ -93,8 +84,10 @@ async function ensureAdminExists() {
 }
 
 // ===============================
-// 🧍 ROUTE D'INSCRIPTION
+// 🔑 ROUTES (inchangées)
 // ===============================
+
+// Inscription
 app.post("/register", async (req, res) => {
   const { username, password, email } = req.body;
   if (!username || !password || !email)
@@ -115,16 +108,14 @@ app.post("/register", async (req, res) => {
       [username, hash, "user", email],
       { prepare: true }
     );
-    res.status(201).json({ message: " Page utilisateur créée avec succès." });
+    res.status(201).json({ message: "Page utilisateur créée avec succès." });
   } catch (err) {
     console.error("Erreur inscription :", err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
 
-// ===============================
-// 🔑 ROUTE DE CONNEXION
-// ===============================
+// Connexion
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -153,18 +144,14 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ===============================
-// 📝 ROUTE : Création de page
-// ===============================
+// Création page
 app.post("/user/add-page", async (req, res) => {
   const { id, title, username, public: isPublic, subpages } = req.body;
   if (!id || !title || !username)
     return res.status(400).json({ message: "Champs manquants." });
 
   try {
-    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], {
-      prepare: true,
-    });
+    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], { prepare: true });
     if (check.rowLength > 0)
       return res.status(400).json({ message: "Cet ID existe déjà." });
 
@@ -176,16 +163,14 @@ app.post("/user/add-page", async (req, res) => {
       { prepare: true }
     );
 
-    res.status(201).json({ message: " Page enregistrée avec succès." });
+    res.status(201).json({ message: "Page enregistrée avec succès." });
   } catch (err) {
     console.error("Erreur lors de la création de la page :", err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
 
-// ===============================
-// ⚙️ Récupération des pages utilisateur
-// ===============================
+// Récupération pages utilisateur
 app.get("/user/pages/:username", async (req, res) => {
   const { username } = req.params;
   try {
@@ -193,10 +178,7 @@ app.get("/user/pages/:username", async (req, res) => {
       "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
       [username]
     );
-    const pages = result.rows.map((p) => ({
-      ...p,
-      subpages: p.subpages ? JSON.parse(p.subpages) : [],
-    }));
+    const pages = result.rows.map(p => ({ ...p, subpages: p.subpages ? JSON.parse(p.subpages) : [] }));
     res.json(pages);
   } catch (err) {
     console.error("Erreur récupération pages utilisateur :", err);
@@ -204,9 +186,7 @@ app.get("/user/pages/:username", async (req, res) => {
   }
 });
 
-// ===============================
-// 📢 ROUTE : Récupération d'une page publique par id
-// ===============================
+// Pages publiques
 app.get("/pages/public/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -228,20 +208,14 @@ app.get("/pages/public/:id", async (req, res) => {
   }
 });
 
-// ===============================
-// 📢 NOUVELLE ROUTE : Récupération de toutes les pages publiques
-// ===============================
+// Toutes les pages publiques
 app.get("/pages/public", async (req, res) => {
   try {
     const result = await client.execute(
       "SELECT * FROM pages WHERE public = true ALLOW FILTERING"
     );
 
-    const pages = result.rows.map(p => ({
-      ...p,
-      subpages: p.subpages ? JSON.parse(p.subpages) : [],
-    }));
-
+    const pages = result.rows.map(p => ({ ...p, subpages: p.subpages ? JSON.parse(p.subpages) : [] }));
     res.json(pages);
   } catch (err) {
     console.error("Erreur récupération pages publiques :", err);
@@ -252,7 +226,5 @@ app.get("/pages/public", async (req, res) => {
 // ===============================
 // 🚀 Lancement du serveur
 // ===============================
-const PORT = 3000;
-app.listen(PORT, () =>
-  console.log(` Serveur lancé sur http://localhost:${PORT}`)
-);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Serveur lancé sur http://localhost:${PORT}`));
