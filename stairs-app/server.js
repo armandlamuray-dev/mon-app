@@ -26,7 +26,6 @@ let client;
 if (process.env.ASTRA_CLIENT_ID && process.env.ASTRA_CLIENT_SECRET && process.env.ASTRA_KEYSPACE) {
   // Render : connexion via variables d'environnement uniquement
   client = new cassandra.Client({
-    cloud: {}, // PAS de secureConnectBundle sur Render
     credentials: {
       username: process.env.ASTRA_CLIENT_ID,
       password: process.env.ASTRA_CLIENT_SECRET,
@@ -84,7 +83,7 @@ async function ensureAdminExists() {
 }
 
 // ===============================
-// 🔑 ROUTES
+// 🔑 ROUTES (inchangées)
 // ===============================
 
 // Inscription
