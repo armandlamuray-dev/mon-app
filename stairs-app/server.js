@@ -19,37 +19,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
-// 🔗 Connexion à Cassandra (Render vs local)
+// 🔗 Connexion à Cassandra (Render)
 // ===============================
-let client;
+const client = new cassandra.Client({
+  cloud: { secureConnectBundle: path.join(__dirname, "secure-connect-base-de-donnee-app.zip") },
+  credentials: {
+    username: process.env.ASTRA_CLIENT_ID,
+    password: process.env.ASTRA_CLIENT_SECRET,
+  },
+  keyspace: process.env.ASTRA_KEYSPACE,
+});
 
-if (process.env.ASTRA_CLIENT_ID && process.env.ASTRA_CLIENT_SECRET && process.env.ASTRA_KEYSPACE) {
-  // Render : connexion via variables d'environnement uniquement
-  client = new cassandra.Client({
-    credentials: {
-      username: process.env.ASTRA_CLIENT_ID,
-      password: process.env.ASTRA_CLIENT_SECRET,
-    },
-    keyspace: process.env.ASTRA_KEYSPACE,
-  });
-  console.log("Connexion Astra Render via variables d'environnement (sans bundle).");
-} else {
-  // Connexion locale via bundle
-  const localBundlePath = path.join(__dirname, "astra_bundle");
-  if (!fs.existsSync(localBundlePath)) {
-    console.error("Bundle local introuvable :", localBundlePath);
-    process.exit(1);
-  }
-  client = new cassandra.Client({
-    cloud: { secureConnectBundle: localBundlePath },
-    credentials: {
-      username: "local_id",
-      password: "local_secret",
-    },
-    keyspace: "local_keyspace",
-  });
-  console.log("Connexion locale via bundle trouvé :", localBundlePath);
-}
+console.log("Utilisation du bundle Render Astra.");
 
 // Connexion à Cassandra
 client.connect()
