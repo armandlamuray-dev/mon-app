@@ -121,7 +121,10 @@
             <p>${preview}</p>
             <small>Publié par : ${p.id_user}</small>
           `;
-          div.onclick = () => window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
+          if (p.slug) {
+            div.onclick = () => window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
+          }
+
           container.appendChild(div);
         });
       } catch (err) {
