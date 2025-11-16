@@ -64,7 +64,7 @@ async function ensureAdminExists() {
 }
 
 // ===============================
-// 🔑 ROUTES (inchangées)
+// 🔑 ROUTES
 // ===============================
 
 // Inscription
@@ -192,7 +192,7 @@ app.get("/pages/public/:id", async (req, res) => {
 app.get("/pages/public", async (req, res) => {
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE public = true ALLOW FILTERING"
+      "SELECT id, title, username, public, created_at, subpages FROM pages WHERE public = true"
     );
 
     const pages = result.rows.map(p => ({ ...p, subpages: p.subpages ? JSON.parse(p.subpages) : [] }));
