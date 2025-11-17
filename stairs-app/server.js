@@ -11,7 +11,6 @@ const cors = require("cors");
 const cassandra = require("cassandra-driver");
 const bcrypt = require("bcrypt");
 const path = require("path");
-const fs = require("fs");
 
 const app = express();
 app.use(cors());
@@ -151,14 +150,14 @@ app.post("/user/add-page", async (req, res) => {
 
     const nb_subpages = subpages?.length || 0;
 
-    // ⚠️ On retire subpages du INSERT, car subpages est dans une autre table !
+    // INSERT dans pages (sans subpages)
     await client.execute(
       "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, toTimestamp(now()), ?, ?, ?)",
       [id, title, username, nb_subpages, isPublic],
       { prepare: true }
     );
 
-    // Insert des sous-pages dans la table subpages
+    // INSERT subpages
     if (subpages && subpages.length > 0) {
       for (const sp of subpages) {
         await client.execute(
