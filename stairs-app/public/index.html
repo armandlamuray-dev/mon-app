@@ -114,15 +114,28 @@
         pages.forEach(p => {
           const div = document.createElement('div');
           div.className = 'page-card';
-          const preview = (p.content || '').length > 200 ? (p.content || '').slice(0,200) + '…' : (p.content || '');
+
+          const preview =
+            (p.content || '').length > 200
+              ? (p.content || '').slice(0, 200) + '…'
+              : (p.content || '');
+
+          // 🔥 Correction 1 : auteur fiable
+          const author = p.username || p.user || p.id_user || "Auteur inconnu";
+
           div.innerHTML = `
             ${p.image ? `<img src="${p.image}" alt="${p.title || 'image'}">` : ''}
             <h3>${p.title || '(sans titre)'}</h3>
             <p>${preview}</p>
-            <small>Publié par : ${p.id_user}</small>
+
+            <!-- 🔥 Correction 2 : afficher le bon auteur -->
+            <small>Publié par : ${author}</small>
           `;
+
+          // 🔥 Correction 3 : ne rien casser sur la redirection, garder slug
           if (p.slug) {
-            div.onclick = () => window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
+            div.onclick = () =>
+              window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
           }
 
           container.appendChild(div);
