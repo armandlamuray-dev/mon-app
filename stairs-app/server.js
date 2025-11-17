@@ -32,7 +32,6 @@ const client = new cassandra.Client({
 
 console.log("Utilisation du bundle Render Astra.");
 
-// Connexion à Cassandra
 client.connect()
   .then(async () => {
     console.log("Connecté à Cassandra");
@@ -45,8 +44,10 @@ client.connect()
 // ===============================
 async function ensureAdminExists() {
   try {
-    const query = "SELECT * FROM users WHERE username = 'admin'";
-    const result = await client.execute(query);
+    const result = await client.execute(
+      "SELECT * FROM users WHERE username = 'admin'"
+    );
+
     if (result.rowLength === 0) {
       const hash = await bcrypt.hash("admin123", 10);
       await client.execute(
@@ -79,6 +80,7 @@ app.post("/register", async (req, res) => {
       [username],
       { prepare: true }
     );
+
     if (check.rowLength > 0)
       return res.status(400).json({ message: "Nom d'utilisateur déjà pris." });
 
@@ -88,6 +90,7 @@ app.post("/register", async (req, res) => {
       [username, hash, "user", email],
       { prepare: true }
     );
+
     res.status(201).json({ message: "Page utilisateur créée avec succès." });
   } catch (err) {
     console.error("Erreur inscription :", err);
@@ -98,18 +101,22 @@ app.post("/register", async (req, res) => {
 // Connexion
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
+
   try {
     const result = await client.execute(
       "SELECT * FROM users WHERE username = ?",
       [username],
       { prepare: true }
     );
+
     if (result.rowLength === 0)
       return res.status(400).json({ message: "Utilisateur inconnu." });
 
     const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ message: "Mot de passe incorrect." });
+
+    if (!match)
+      return res.status(401).json({ message: "Mot de passe incorrect." });
 
     res.json({
       message: "Connexion réussie.",
@@ -118,6 +125,7 @@ app.post("/login", async (req, res) => {
       email: user.email,
       created_at: user.created_at,
     });
+
   } catch (err) {
     console.error("Erreur connexion :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -127,23 +135,42 @@ app.post("/login", async (req, res) => {
 // Création page
 app.post("/user/add-page", async (req, res) => {
   const { id, title, username, public: isPublic, subpages } = req.body;
+
   if (!id || !title || !username)
     return res.status(400).json({ message: "Champs manquants." });
 
   try {
-    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], { prepare: true });
+    const check = await client.execute(
+      "SELECT id FROM pages WHERE id = ?",
+      [id],
+      { prepare: true }
+    );
+
     if (check.rowLength > 0)
       return res.status(400).json({ message: "Cet ID existe déjà." });
 
     const nb_subpages = subpages?.length || 0;
 
+    // ⚠️ On retire subpages du INSERT, car subpages est dans une autre table !
     await client.execute(
-      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public, subpages) VALUES (?, ?, toTimestamp(now()), ?, ?, ?, ?)",
-      [id, title, username, nb_subpages, isPublic, JSON.stringify(subpages)],
+      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, toTimestamp(now()), ?, ?, ?)",
+      [id, title, username, nb_subpages, isPublic],
       { prepare: true }
     );
 
+    // Insert des sous-pages dans la table subpages
+    if (subpages && subpages.length > 0) {
+      for (const sp of subpages) {
+        await client.execute(
+          "INSERT INTO subpages (id, sub_id, content, image) VALUES (?, ?, ?, ?)",
+          [id, sp.sub_id, sp.content, sp.image || null],
+          { prepare: true }
+        );
+      }
+    }
+
     res.status(201).json({ message: "Page enregistrée avec succès." });
+
   } catch (err) {
     console.error("Erreur lors de la création de la page :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -153,25 +180,43 @@ app.post("/user/add-page", async (req, res) => {
 // Récupération pages utilisateur
 app.get("/user/pages/:username", async (req, res) => {
   const { username } = req.params;
+
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE username = ? ALLOW FILTERING",
+      "SELECT id, title, created_at, username, nb_subpages, public FROM pages WHERE username = ? ALLOW FILTERING",
       [username]
     );
-    const pages = result.rows.map(p => ({ ...p, subpages: p.subpages ? JSON.parse(p.subpages) : [] }));
+
+    const pages = [];
+
+    for (const p of result.rows) {
+      const subs = await client.execute(
+        "SELECT sub_id, content, image FROM subpages WHERE id = ?",
+        [p.id],
+        { prepare: true }
+      );
+
+      pages.push({
+        ...p,
+        subpages: subs.rows
+      });
+    }
+
     res.json(pages);
+
   } catch (err) {
     console.error("Erreur récupération pages utilisateur :", err);
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
 
-// Pages publiques
+// Page publique par ID
 app.get("/pages/public/:id", async (req, res) => {
   const { id } = req.params;
+
   try {
     const result = await client.execute(
-      "SELECT * FROM pages WHERE id = ? AND public = true",
+      "SELECT id, title, created_at, username, nb_subpages, public FROM pages WHERE id = ? AND public = true",
       [id],
       { prepare: true }
     );
@@ -180,8 +225,17 @@ app.get("/pages/public/:id", async (req, res) => {
       return res.status(404).json({ message: "Page non trouvée ou non publique." });
 
     const page = result.rows[0];
-    page.subpages = page.subpages ? JSON.parse(page.subpages) : [];
+
+    const subs = await client.execute(
+      "SELECT sub_id, content, image FROM subpages WHERE id = ?",
+      [id],
+      { prepare: true }
+    );
+
+    page.subpages = subs.rows;
+
     res.json(page);
+
   } catch (err) {
     console.error("Erreur récupération page publique :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -192,11 +246,26 @@ app.get("/pages/public/:id", async (req, res) => {
 app.get("/pages/public", async (req, res) => {
   try {
     const result = await client.execute(
-      "SELECT id, title, username, public, created_at, subpages FROM pages WHERE public = true"
+      "SELECT id, title, username, public, created_at, nb_subpages FROM pages WHERE public = true ALLOW FILTERING"
     );
 
-    const pages = result.rows.map(p => ({ ...p, subpages: p.subpages ? JSON.parse(p.subpages) : [] }));
+    const pages = [];
+
+    for (const p of result.rows) {
+      const subs = await client.execute(
+        "SELECT sub_id, content, image FROM subpages WHERE id = ?",
+        [p.id],
+        { prepare: true }
+      );
+
+      pages.push({
+        ...p,
+        subpages: subs.rows
+      });
+    }
+
     res.json(pages);
+
   } catch (err) {
     console.error("Erreur récupération pages publiques :", err);
     res.status(500).json({ message: "Erreur serveur." });
@@ -207,4 +276,6 @@ app.get("/pages/public", async (req, res) => {
 // 🚀 Lancement du serveur
 // ===============================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Serveur lancé sur http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Serveur lancé sur http://localhost:${PORT}`)
+);
