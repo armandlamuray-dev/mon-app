@@ -133,7 +133,7 @@
           `;
 
           // 🔥 Correction 3 : ne rien casser sur la redirection, garder id
-          if (p.getElementById) {
+          if (p.id) {
             div.onclick = () =>
               window.location.href = `public-page.html?id=${encodeURIComponent(p.id)}`;
           }
