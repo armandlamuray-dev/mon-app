@@ -42,8 +42,8 @@ async function addPage() {
   const content = contentInput?.value.trim();
   const isPublic = document.getElementById("publicPage")?.value === "true";
 
-  if (!title || !content) {
-    alert("Remplissez tous les champs.");
+  if (!title) {
+    alert("Remplissez titre");
     return;
   }
 
