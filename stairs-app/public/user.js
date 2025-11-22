@@ -4,7 +4,7 @@ function generateId(len = 16) {
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-// Échapper le HTML
+// Échapper le HTML pour éviter l'injection
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -39,30 +39,39 @@ async function addPage() {
   const fileInput = document.getElementById("mainImage");
 
   const title = titleInput?.value.trim();
-  const content = contentInput?.value.trim();
+  const content = contentInput?.value.trim(); // peut être vide !
   const isPublic = document.getElementById("publicPage")?.value === "true";
 
-  if (!title) {
-    alert("Remplissez titre");
+  if (!title) { 
+    alert("Entrez un titre de page.");
     return;
   }
 
   const formData = new FormData();
   formData.append("title", title);
-  formData.append("content", content);
+  formData.append("content", content); // vide = OK
   formData.append("username", user.username);
   formData.append("public", isPublic);
 
-  if (fileInput?.files?.length)
+  if (fileInput?.files?.length) 
     formData.append("image", fileInput.files[0]);
 
-  // ---- CORRECTION : envoyer la sous-page 1 ----
-  const spContent = document.getElementById("subContent_1").value.trim();
-  formData.append("subpages[0][content]", spContent);
+  // --------- ENVOI DES SOUS-PAGES ---------
+  const subpages = [];
 
-  const spImage = document.getElementById("subImage_1").files[0];
-  if (spImage) formData.append("subpages[0][image]", spImage);
-  // ----------------------------------------------
+  document.querySelectorAll(".subpage").forEach((sub, index) => {
+    const id = index + 1;
+    const text = document.getElementById(`subContent_${id}`).value.trim();
+    const imgFile = document.getElementById(`subImage_${id}`).files[0] ?? null;
+
+    subpages.push({ sub_id: id, content: text, hasImage: !!imgFile });
+
+    if (imgFile)
+      formData.append(`subImage_${id}`, imgFile);
+  });
+
+  formData.append("subpages", JSON.stringify(subpages));
+  // ------------------------------------------
 
   try {
     const res = await fetch("/user/add-page", { method: "POST", body: formData });
@@ -75,28 +84,25 @@ async function addPage() {
     if (fileInput) fileInput.value = "";
 
     loadMyPages();
+
   } catch (err) {
     console.error("Erreur réseau addPage:", err);
     alert("Impossible de contacter le serveur.");
   }
 }
 
-// Afficher les pages
+// Afficher les pages de l'utilisateur
 async function loadMyPages() {
   const user = JSON.parse(localStorage.getItem("user"));
   const container = document.getElementById("pages-list");
   if (!user || !user.username) { window.location.href = "/login.html"; return; }
 
   container.textContent = "Chargement...";
-
   try {
     const res = await fetch(`/user/pages/${encodeURIComponent(user.username)}`);
     if (!res.ok) return container.textContent = "Erreur chargement.";
     const pages = await res.json();
-    if (!pages.length) {
-      container.innerHTML = "<p>Aucune page.</p>";
-      return;
-    }
+    if (!pages.length) { container.innerHTML = "<p>Aucune page.</p>"; return; }
 
     container.innerHTML = "";
     pages.forEach(p => {
@@ -148,9 +154,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!user || !user.username) { window.location.href = "/login.html"; return; }
 
   document.getElementById("welcome").textContent = `Bienvenue, ${user.username} 👋`;
-
-  if (user.role === "admin")
-    document.getElementById("admin-section").style.display = "block";
+  if (user.role === "admin") document.getElementById("admin-section").style.display = "block";
 
   document.getElementById("createPageBtn").addEventListener("click", addPage);
   document.getElementById("addSubpageBtn").addEventListener("click", () => {
@@ -175,8 +179,6 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("delete-page-btn").addEventListener("click", deletePage);
   document.getElementById("delete-user-btn").addEventListener("click", deleteUser);
 
-  // Sous-page 1 par défaut
   addSubpageBlock(1);
-
   loadMyPages();
 });
