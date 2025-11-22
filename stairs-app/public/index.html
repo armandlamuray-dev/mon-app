@@ -99,7 +99,7 @@
     async function loadPublicPages() {
       const container = document.getElementById('public-pages');
       try {
-        const res = await fetch('/public/public-page.html');
+        const res = await fetch('/api/pages/public');
         if (!res.ok) {
           container.innerHTML = '<p>Impossible de charger les pages publiques.</p>';
           return;
