@@ -5,139 +5,110 @@
   <title>Page publique</title>
 
   <style>
-    /* Style global */
+    /* Fond général */
     body {
       font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+      background-color: #f2e9d8; /* Beige doux */
       margin: 0;
       padding: 0;
     }
 
-    /* En-tête */
-    header {
-      background-color: #333;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
-
-    /* Contenu principal */
+    /* Conteneur principal */
     main {
-      padding: 20px;
-      background-color: white;
-      margin: 20px auto;
-      width: 80%;
-      border-radius: 5px;
-      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-      text-align: center;
-    }
-
-    /* Conteneur des images */
-    .image-container {
-      display: flex;
-      justify-content: center;
-      gap: 50px;
+      background: #ffffff;
       margin: 40px auto;
-      max-width: 80%;
-    }
-
-    /* Style pour chaque boîte d'image */
-    .image-box {
-      width: 45%;
-      text-align: center;
-    }
-
-    /* Images */
-    .image-box img {
-      width: 100%;
-      max-width: 400px;
-      height: auto;
+      padding: 30px;
+      width: 85%;
+      max-width: 900px;
       border-radius: 15px;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-      transition: transform 0.3s ease;
-    }
-
-    /* Effet au survol */
-    .image-box img:hover {
-      transform: scale(1.05);
-    }
-
-    /* Texte sous les images */
-    .image-box p {
-      font-size: 1.2em;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-
-    /* Titre principal */
-    h1 {
-      margin-top: 20px;
-      font-size: 2em;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
       text-align: center;
     }
 
-    /* Conteneur des zones de texte */
-    .text-container {
-      display: flex;
-      justify-content: space-between;
-      gap: 50px;
-      margin-top: 30px;
-      max-width: 80%;
-      margin-left: auto;
-      margin-right: auto;
+    /* Titre */
+    h1 {
+      font-size: 2.2em;
+      margin-bottom: 10px;
+      color: #333;
     }
 
-    /* Zones de texte */
+    /* Sous-texte */
+    .meta {
+      color: #666;
+      font-size: 0.95em;
+      margin-bottom: 20px;
+    }
+
+    /* Image affichée */
+    .image-container {
+      text-align: center;
+      margin: 30px auto;
+    }
+
+    .image-container img {
+      width: 100%;
+      max-width: 450px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transition: transform .3s;
+    }
+
+    .image-container img:hover {
+      transform: scale(1.03);
+    }
+
+    /* Zone de contenu */
     .text-box {
-      width: 45%;
+      background: #ffffff;
       padding: 20px;
-      background-color: white;
-      border-radius: 5px;
-      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+      margin: 25px auto;
+      border-radius: 15px;
+      width: 100%;
       text-align: left;
-      border-left: 5px solid black;
-    }
-
-    .right {
-      border-left: none;
-      border-right: 5px solid black;
+      box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
     }
 
     .text-box h2 {
-      font-size: 1.5em;
-      margin-bottom: 10px;
+      margin-top: 0;
+      font-size: 1.6em;
+      color: #444;
     }
 
-    /* Barre de retour */
+    .text-box p {
+      line-height: 1.6em;
+      color: #333;
+      white-space: pre-line; /* Affiche bien les sauts de ligne */
+    }
+
+    /* Barre retour */
     .return-bar {
       text-align: center;
-      background-color: #000;
-      padding: 15px;
-      margin-top: 30px;
+      margin: 30px 0;
     }
 
     .return-bar a {
-      color: white;
+      background: #fff;
+      padding: 12px 25px;
+      border-radius: 12px;
       text-decoration: none;
-      font-size: 1.2em;
+      font-size: 1.1em;
       font-weight: bold;
+      color: #333;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      transition: background .3s;
     }
 
     .return-bar a:hover {
-      text-decoration: underline;
+      background: #eaeaea;
     }
-
   </style>
 </head>
 
 <body>
 
-  <!-- Header dynamique -->
-  <script src="header.js"></script>
+  <script src="header.js" defer></script>
 
-  <main id="page-container">
-    Chargement...
-  </main>
+  <main id="page-container">Chargement...</main>
 
   <div class="return-bar">
     <a href="index.html">⬅ Retour à l'accueil</a>
@@ -165,27 +136,21 @@
 
         container.innerHTML = `
           <h1>${p.title || '(sans titre)'}</h1>
-          <p><strong>Auteur :</strong> ${p.username || 'Inconnu'}</p>
-          <p><small>Créée le : ${p.created_at ? new Date(p.created_at).toLocaleString() : 'Inconnue'}</small></p>
+
+          <div class="meta">
+            Auteur : <strong>${p.username || 'Inconnu'}</strong><br>
+            ${p.created_at ? `Créée le : ${new Date(p.created_at).toLocaleString()}` : ''}
+          </div>
 
           ${p.image ? `
             <div class="image-container">
-              <div class="image-box">
-                <img src="${p.image}">
-                <p>Illustration</p>
-              </div>
-            </div>` : ''}
-
-          <div class="text-container">
-            <div class="text-box">
-              <h2>Description</h2>
-              <p>${(p.content || '').replace(/\n/g, "<br>")}</p>
+              <img src="${p.image}" alt="Illustration">
             </div>
+          ` : ''}
 
-            <div class="text-box right">
-              <h2>Détails complémentaires</h2>
-              <p><em>A compléter selon ton modèle…</em></p>
-            </div>
+          <div class="text-box">
+            <h2>Contenu</h2>
+            <p>${p.content || 'Aucun contenu.'}</p>
           </div>
         `;
       } catch (err) {
