@@ -11,10 +11,12 @@ const cors = require("cors");
 const cassandra = require("cassandra-driver");
 const bcrypt = require("bcrypt");
 const path = require("path");
+const fs = require("fs");
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // important pour JSON
+app.use(express.urlencoded({ extended: true })); // pour form-urlencoded au cas où
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
@@ -123,6 +125,7 @@ app.post("/login", async (req, res) => {
       role: user.role,
       email: user.email,
       created_at: user.created_at,
+      // si vous avez besoin d'un id côté front, renvoyez-le ici (ex: user.id)
     });
 
   } catch (err) {
@@ -132,37 +135,51 @@ app.post("/login", async (req, res) => {
 });
 
 // Création page
+// NOTE : route durcie pour éviter crash quand req.body est undefined
 app.post("/user/add-page", async (req, res) => {
-  const { id, title, username, public: isPublic, subpages } = req.body;
+  // défense : si body absent, on loggue headers et on renvoie erreur claire
+  if (!req.body || Object.keys(req.body).length === 0) {
+    console.error("Route /user/add-page appelé avec body vide. Headers:", req.headers);
+    return res.status(400).json({
+      message:
+        "Requête sans corps reçu. Vérifiez que vous envoyez un JSON et que l'en-tête 'Content-Type: application/json' est présent.",
+    });
+  }
 
-  if (!id || !title || !username)
-    return res.status(400).json({ message: "Champs manquants." });
+  // destructuration sûre
+  const payload = req.body || {};
+  const { id, title, username, public: isPublic = false, subpages } = payload;
+
+  // validations minimales
+  if (!id || !title || !username) {
+    return res.status(400).json({ message: "Champs obligatoires manquants (id, title, username)." });
+  }
 
   try {
-    const check = await client.execute(
-      "SELECT id FROM pages WHERE id = ?",
-      [id],
-      { prepare: true }
-    );
+    // vérification unicité id
+    const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], { prepare: true });
+    if (check.rowLength > 0) return res.status(400).json({ message: "Cet ID existe déjà." });
 
-    if (check.rowLength > 0)
-      return res.status(400).json({ message: "Cet ID existe déjà." });
+    const nb_subpages = Array.isArray(subpages) ? subpages.length : 0;
 
-    const nb_subpages = subpages?.length || 0;
-
-    // INSERT dans pages (sans subpages)
+    // insert dans pages (subpages sont en table séparée)
     await client.execute(
       "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, toTimestamp(now()), ?, ?, ?)",
-      [id, title, username, nb_subpages, isPublic],
+      [id, title, username, nb_subpages, !!isPublic],
       { prepare: true }
     );
 
-    // INSERT subpages
-    if (subpages && subpages.length > 0) {
+    // insert subpages si fournis
+    if (Array.isArray(subpages) && subpages.length > 0) {
       for (const sp of subpages) {
+        // sp doit contenir sub_id, content (image optionnelle)
+        const subId = sp.sub_id ?? null;
+        const content = sp.content ?? "";
+        const image = sp.image ?? null;
+        if (subId === null) continue; // skip malformed
         await client.execute(
           "INSERT INTO subpages (id, sub_id, content, image) VALUES (?, ?, ?, ?)",
-          [id, sp.sub_id, sp.content, sp.image || null],
+          [id, subId, content, image],
           { prepare: true }
         );
       }
@@ -175,24 +192,6 @@ app.post("/user/add-page", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
-
-
-app.post('/user/theme', async (req, res) => {
-  const { id_user, theme } = req.body;
-
-  try {
-    await client.execute(
-      'UPDATE users SET theme=? WHERE id=?',
-      [JSON.stringify(theme), id_user],
-      { prepare: true }
-    );
-
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: e.toString() });
-  }
-});
-
 
 // Récupération pages utilisateur
 app.get("/user/pages/:username", async (req, res) => {
@@ -289,10 +288,27 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
+// Route theme (exemples minimalistes)
+app.post('/user/theme', async (req, res) => {
+  const { id_user, theme } = req.body || {};
+  if (!id_user) return res.status(400).json({ message: "id_user manquant." });
+  try {
+    await client.execute(
+      'UPDATE users SET theme=? WHERE username=?',
+      [JSON.stringify(theme || {}), id_user],
+      { prepare: true }
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error("Erreur sauvegarde theme:", e);
+    res.status(500).json({ error: e.toString() });
+  }
+});
+
 app.get('/user/theme/:id', async (req, res) => {
   try {
     const result = await client.execute(
-      'SELECT theme FROM users WHERE id=?',
+      'SELECT theme FROM users WHERE username=?',
       [req.params.id],
       { prepare: true }
     );
@@ -301,10 +317,10 @@ app.get('/user/theme/:id', async (req, res) => {
     res.json(JSON.parse(result.rows[0].theme || "{}"));
 
   } catch (e) {
+    console.error("Erreur lecture theme:", e);
     res.status(500).json({ error: e.toString() });
   }
 });
-
 
 // ===============================
 // 🚀 Lancement du serveur
