@@ -16,7 +16,7 @@
   <script>
     async function loadPage() {
       const params = new URLSearchParams(window.location.search);
-      const id = params.get('slug'); // On utilise "slug" pour être cohérent avec index.html
+      const id = params.get('id'); // On utilise "id" pour être cohérent avec index.html
       const container = document.getElementById('page-container');
 
       if (!id) {
