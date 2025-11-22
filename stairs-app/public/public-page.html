@@ -168,6 +168,24 @@
     }
 
     window.addEventListener('DOMContentLoaded', loadPage);
+
+      async function applyTheme() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) return;
+
+    const theme = await fetch(`/user/theme/${user.id}`).then(r => r.json());
+
+    if (theme.background)
+      document.body.style.background = theme.background;
+
+    const main = document.querySelector("main");
+    if (main) {
+      main.style.background = theme.cardColor || "#fff";
+      main.style.borderRadius = theme.cardRadius || "15px";
+    }
+  }
+
+  applyTheme();
   </script>
 
 </body>
