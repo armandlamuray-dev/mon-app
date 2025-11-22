@@ -35,18 +35,30 @@ async function addPage() {
   if (!user?.username) { alert("Connectez-vous."); return; }
 
   const titleInput = document.getElementById("title");
-  const contentInput = document.getElementById("content");
   const fileInput = document.getElementById("mainImage");
 
   const title = titleInput?.value.trim();
-  const content = contentInput?.value.trim();
   const isPublic = document.getElementById("publicPage")?.value === "true";
 
-  if (!title || !content) { alert("Remplissez tous les champs."); return; }
+  // Correction : seul le titre doit obligatoirement être rempli
+  if (!title) {
+    alert("Vous devez mettre un titre.");
+    return;
+  }
+
+  // Correction : on récupère le texte de la sous-page 1
+  const subpage1 = document.getElementById("subContent_1")?.value.trim();
+  if (!subpage1) {
+    alert("Vous devez remplir la sous-page 1, qui sert de contenu principal.");
+    return;
+  }
+
+  // Correction : on envoie SUBPAGE1 comme contenu principal
+  const content = subpage1;
 
   const formData = new FormData();
   formData.append("title", title);
-  formData.append("content", content);
+  formData.append("content", content); // <-- contenu principal = sous-page 1
   formData.append("username", user.username);
   formData.append("public", isPublic);
 
@@ -59,7 +71,7 @@ async function addPage() {
 
     alert(data.message || "Page créée !");
     titleInput.value = "";
-    contentInput.value = "";
+    document.getElementById("subContent_1").value = "";
     if (fileInput) fileInput.value = "";
 
     loadMyPages();
