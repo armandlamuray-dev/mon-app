@@ -17,11 +17,11 @@
 
   <h1>Créer une nouvelle page principale</h1>
 
-  <form id="add-page-form">
+  <form id="add-page-form" enctype="multipart/form-data">
     <input type="text" id="title" placeholder="Titre de la page" required>
     <input type="number" id="nbSubpages" placeholder="Nombre de sous-pages (min. 1)" min="1" value="1" required>
     <textarea id="firstContent" placeholder="Contenu de la première sous-page" required></textarea>
-    <input type="text" id="firstImage" placeholder="Image (URL ou vide)">
+    <input type="file" id="firstImage" accept="image/*">
     <label><input type="checkbox" id="publicPage"> Page publique</label>
     <button type="submit">Créer la page</button>
   </form>
@@ -29,7 +29,6 @@
   <button onclick="window.location.href='user.html'">⬅ Retour</button>
 
   <script>
-    // Génère un identifiant aléatoire de 16 caractères
     function generateId(length = 16) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let result = '';
@@ -51,7 +50,7 @@
       const title = document.getElementById('title').value.trim();
       const nbSubpages = parseInt(document.getElementById('nbSubpages').value);
       const content = document.getElementById('firstContent').value.trim();
-      const image = document.getElementById('firstImage').value.trim();
+      const imageFile = document.getElementById('firstImage').files[0] ?? null;
       const isPublic = document.getElementById('publicPage').checked;
 
       if (!title || !content || nbSubpages < 1) {
@@ -59,26 +58,19 @@
         return;
       }
 
-      // Adaptation backend : subpages tableau
-      const payload = {
-        id,
-        title,
-        username: user.username,
-        public: isPublic,
-        subpages: [
-          {
-            sub_id: 1,
-            content,
-            image
-          }
-        ]
-      };
+      // FormData pour upload fichiers
+      const formData = new FormData();
+      formData.append("id", id);
+      formData.append("title", title);
+      formData.append("username", user.username);
+      formData.append("public", isPublic);
+      formData.append("subpages[0][content]", content);
+      if(imageFile) formData.append("subpages[0][image]", imageFile);
 
       try {
         const res = await fetch('/user/add-page', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: formData
         });
 
         const data = await res.json().catch(() => null);
