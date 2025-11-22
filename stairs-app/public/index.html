@@ -132,10 +132,10 @@
             <small>Publié par : ${author}</small>
           `;
 
-          // 🔥 Correction 3 : ne rien casser sur la redirection, garder slug
-          if (p.slug) {
+          // 🔥 Correction 3 : ne rien casser sur la redirection, garder id
+          if (p.getElementById) {
             div.onclick = () =>
-              window.location.href = `public-page.html?slug=${encodeURIComponent(p.slug)}`;
+              window.location.href = `public-page.html?id=${encodeURIComponent(p.id)}`;
           }
 
           container.appendChild(div);
