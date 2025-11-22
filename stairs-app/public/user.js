@@ -4,7 +4,7 @@ function generateId(len = 16) {
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
-// Échapper le HTML pour éviter l'injection
+// Échapper le HTML
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
@@ -35,34 +35,34 @@ async function addPage() {
   if (!user?.username) { alert("Connectez-vous."); return; }
 
   const titleInput = document.getElementById("title");
+  const contentInput = document.getElementById("content");
   const fileInput = document.getElementById("mainImage");
 
   const title = titleInput?.value.trim();
+  const content = contentInput?.value.trim();
   const isPublic = document.getElementById("publicPage")?.value === "true";
 
-  // Correction : seul le titre doit obligatoirement être rempli
-  if (!title) {
-    alert("Vous devez mettre un titre.");
+  if (!title || !content) {
+    alert("Remplissez tous les champs.");
     return;
   }
-
-  // Correction : on récupère le texte de la sous-page 1
-  const subpage1 = document.getElementById("subContent_1")?.value.trim();
-  if (!subpage1) {
-    alert("Vous devez remplir la sous-page 1, qui sert de contenu principal.");
-    return;
-  }
-
-  // Correction : on envoie SUBPAGE1 comme contenu principal
-  const content = subpage1;
 
   const formData = new FormData();
   formData.append("title", title);
-  formData.append("content", content); // <-- contenu principal = sous-page 1
+  formData.append("content", content);
   formData.append("username", user.username);
   formData.append("public", isPublic);
 
-  if (fileInput?.files?.length) formData.append("image", fileInput.files[0]);
+  if (fileInput?.files?.length)
+    formData.append("image", fileInput.files[0]);
+
+  // ---- CORRECTION : envoyer la sous-page 1 ----
+  const spContent = document.getElementById("subContent_1").value.trim();
+  formData.append("subpages[0][content]", spContent);
+
+  const spImage = document.getElementById("subImage_1").files[0];
+  if (spImage) formData.append("subpages[0][image]", spImage);
+  // ----------------------------------------------
 
   try {
     const res = await fetch("/user/add-page", { method: "POST", body: formData });
@@ -71,7 +71,7 @@ async function addPage() {
 
     alert(data.message || "Page créée !");
     titleInput.value = "";
-    document.getElementById("subContent_1").value = "";
+    contentInput.value = "";
     if (fileInput) fileInput.value = "";
 
     loadMyPages();
@@ -81,18 +81,22 @@ async function addPage() {
   }
 }
 
-// Afficher les pages de l'utilisateur
+// Afficher les pages
 async function loadMyPages() {
   const user = JSON.parse(localStorage.getItem("user"));
   const container = document.getElementById("pages-list");
   if (!user || !user.username) { window.location.href = "/login.html"; return; }
 
   container.textContent = "Chargement...";
+
   try {
     const res = await fetch(`/user/pages/${encodeURIComponent(user.username)}`);
     if (!res.ok) return container.textContent = "Erreur chargement.";
     const pages = await res.json();
-    if (!pages.length) { container.innerHTML = "<p>Aucune page.</p>"; return; }
+    if (!pages.length) {
+      container.innerHTML = "<p>Aucune page.</p>";
+      return;
+    }
 
     container.innerHTML = "";
     pages.forEach(p => {
@@ -144,7 +148,9 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!user || !user.username) { window.location.href = "/login.html"; return; }
 
   document.getElementById("welcome").textContent = `Bienvenue, ${user.username} 👋`;
-  if (user.role === "admin") document.getElementById("admin-section").style.display = "block";
+
+  if (user.role === "admin")
+    document.getElementById("admin-section").style.display = "block";
 
   document.getElementById("createPageBtn").addEventListener("click", addPage);
   document.getElementById("addSubpageBtn").addEventListener("click", () => {
@@ -169,7 +175,8 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("delete-page-btn").addEventListener("click", deletePage);
   document.getElementById("delete-user-btn").addEventListener("click", deleteUser);
 
-  // Crée une première sous-page par défaut
+  // Sous-page 1 par défaut
   addSubpageBlock(1);
+
   loadMyPages();
 });
