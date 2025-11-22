@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Personnalisation du thème</title>
+
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .preview {
+      margin-top: 20px;
+      background: #f2e9d8;
+      padding: 20px;
+      border-radius: 15px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🎨 Personnalise ton thème</h1>
+
+  <label>Fond du site :</label>
+  <input type="color" id="bg">
+
+  <label>Fond des blocs :</label>
+  <input type="color" id="card">
+
+  <label>Rayon des arrondis :</label>
+  <input type="range" min="0" max="40" id="radius">
+
+  <button id="save">Sauvegarder</button>
+
+  <h2>Aperçu :</h2>
+  <div class="preview" id="preview">
+    <div class="card" id="prevCard">
+      Exemple de card
+    </div>
+  </div>
+
+  <script>
+    function updatePreview() {
+      document.getElementById("preview").style.background = bg.value;
+      prevCard.style.background = card.value;
+      prevCard.style.borderRadius = radius.value + "px";
+    }
+
+    bg.oninput = updatePreview;
+    card.oninput = updatePreview;
+    radius.oninput = updatePreview;
+
+    document.getElementById("save").onclick = async () => {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) return alert("Non connecté");
+
+      const theme = {
+        background: bg.value,
+        cardColor: card.value,
+        cardRadius: radius.value + "px"
+      };
+
+      await fetch('/user/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_user: user.id, theme })
+      });
+
+      alert("Thème sauvegardé !");
+    };
+  </script>
+</body>
+</html>

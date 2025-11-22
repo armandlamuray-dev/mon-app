@@ -119,7 +119,15 @@
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
       const container = document.getElementById('page-container');
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user) {
+        const theme = await fetch(`/user/theme/${user.id}`).then(r => r.json());
 
+        document.body.style.background = theme.background || "#f2e9d8";
+        document.querySelector("main").style.background = theme.cardColor || "#fff";
+        document.querySelector("main").style.borderRadius = theme.cardRadius || "15px";
+      }
+      
       if (!id) {
         container.innerHTML = '<p>Page non trouvée.</p>';
         return;

@@ -176,6 +176,24 @@ app.post("/user/add-page", async (req, res) => {
   }
 });
 
+
+app.post('/user/theme', async (req, res) => {
+  const { id_user, theme } = req.body;
+
+  try {
+    await client.execute(
+      'UPDATE users SET theme=? WHERE id=?',
+      [JSON.stringify(theme), id_user],
+      { prepare: true }
+    );
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.toString() });
+  }
+});
+
+
 // Récupération pages utilisateur
 app.get("/user/pages/:username", async (req, res) => {
   const { username } = req.params;
@@ -270,6 +288,23 @@ app.get("/pages/public", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
+
+app.get('/user/theme/:id', async (req, res) => {
+  try {
+    const result = await client.execute(
+      'SELECT theme FROM users WHERE id=?',
+      [req.params.id],
+      { prepare: true }
+    );
+
+    if (result.rowLength === 0) return res.json({});
+    res.json(JSON.parse(result.rows[0].theme || "{}"));
+
+  } catch (e) {
+    res.status(500).json({ error: e.toString() });
+  }
+});
+
 
 // ===============================
 // 🚀 Lancement du serveur
