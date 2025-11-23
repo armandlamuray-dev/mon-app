@@ -19,7 +19,7 @@
 
   <section>
     <h2>🔍 Gérer une page</h2>
-    <input type="text" id="slug" placeholder="ID de la page" />
+    <input type="text" id="id" placeholder="ID de la page" />
     <button id="view-page-btn">Afficher</button>
     <button id="delete-page-btn">Supprimer</button>
     <div id="page-details">Détails de la page apparaîtront ici.</div>
@@ -50,9 +50,9 @@
 
     // Page
     document.getElementById('view-page-btn').addEventListener('click', async () => {
-      const slug = document.getElementById('slug').value.trim();
-      if (!slug) return alert('Veuillez entrer l’ID de la page.');
-      const data = await fetchJSON(`/pages/public/${encodeURIComponent(slug)}`);
+      const id = document.getElementById('id').value.trim();
+      if (!id) return alert('Veuillez entrer l’ID de la page.');
+      const data = await fetchJSON(`/pages/public/${encodeURIComponent(id)}`);
       const details = document.getElementById('page-details');
       if (!data) return details.innerHTML = 'Page non trouvée.';
       details.innerHTML = `
@@ -64,10 +64,10 @@
     });
 
     document.getElementById('delete-page-btn').addEventListener('click', async () => {
-      const slug = document.getElementById('slug').value.trim();
-      if (!slug) return alert('Veuillez entrer l’ID de la page.');
+      const id = document.getElementById('id').value.trim();
+      if (!id) return alert('Veuillez entrer l’ID de la page.');
       if (!confirm('Voulez-vous vraiment supprimer cette page ?')) return;
-      const data = await fetchJSON(`/admin/delete-page/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+      const data = await fetchJSON(`/admin/delete-page/${encodeURIComponent(id)}`, { method: 'DELETE' });
       alert(data?.message || 'Page supprimée.');
       document.getElementById('page-details').innerHTML = '';
     });

@@ -1,6 +1,6 @@
 // 🔹 Voir une page
 async function viewPage() {
-  const id = document.getElementById("slug").value.trim();
+  const id = document.getElementById("id").value.trim();
   const container = document.getElementById("page-details");
   if (!id) return alert("Saisissez un ID de page.");
   try {
@@ -22,7 +22,7 @@ async function viewPage() {
 
 // 🔹 Supprimer une page
 async function deletePage() {
-  const id = document.getElementById("slug").value.trim();
+  const id = document.getElementById("id").value.trim();
   if (!id) return alert("Entrez un ID de page.");
   if (!confirm("Voulez-vous vraiment supprimer cette page ?")) return;
   try {
