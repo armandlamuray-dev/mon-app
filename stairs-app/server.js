@@ -287,6 +287,49 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
+app.delete("/admin/delete-public-page", async (req, res) => {
+  try {
+    const { id_page } = req.body;
+
+    if (!id_page) {
+      return res.status(400).json({ error: "id_page requis" });
+    }
+
+    await cassandraClient.execute(
+      "DELETE FROM public_pages WHERE id_page = ?",
+      [ id_page ],
+      { prepare: true }
+    );
+
+    res.json({ success: true, message: "Page publique supprimée" });
+  } catch (error) {
+    console.error("Erreur admin delete:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+app.delete("/user/page", async (req, res) => {
+  try {
+    const { id_user, id_page } = req.body;
+
+    if (!id_user || !id_page) {
+      return res.status(400).json({ error: "id_user et id_page requis" });
+    }
+
+    await cassandraClient.execute(
+      "DELETE FROM pages WHERE id_user = ? AND id_page = ?",
+      [ id_user, id_page ],
+      { prepare: true }
+    );
+
+    res.json({ success: true, message: "Page supprimée." });
+  } catch (err) {
+    console.error("Erreur DELETE /user/page :", err);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+});
+
+
 // Route theme (exemples minimalistes pour l'utilisateur global - inchangé)
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
