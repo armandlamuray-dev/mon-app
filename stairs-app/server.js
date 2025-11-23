@@ -125,7 +125,6 @@ app.post("/login", async (req, res) => {
       role: user.role,
       email: user.email,
       created_at: user.created_at,
-      // si vous avez besoin d'un id côté front, renvoyez-le ici (ex: user.id)
     });
 
   } catch (err) {
@@ -148,7 +147,7 @@ app.post("/user/add-page", async (req, res) => {
 
   // destructuration sûre
   const payload = req.body || {};
-  const { id, title, username, public: isPublic = false, subpages } = payload;
+  const { id, title, username, public: isPublic = false, subpages, theme } = payload;
 
   // validations minimales
   if (!id || !title || !username) {
@@ -162,10 +161,10 @@ app.post("/user/add-page", async (req, res) => {
 
     const nb_subpages = Array.isArray(subpages) ? subpages.length : 0;
 
-    // insert dans pages (subpages sont en table séparée)
+    // insert dans pages (subpages sont en table séparée), stocke theme en JSON string si fourni
     await client.execute(
-      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public) VALUES (?, ?, toTimestamp(now()), ?, ?, ?)",
-      [id, title, username, nb_subpages, !!isPublic],
+      "INSERT INTO pages (id, title, created_at, username, nb_subpages, public, theme) VALUES (?, ?, toTimestamp(now()), ?, ?, ?, ?)",
+      [id, title, username, nb_subpages, !!isPublic, theme ? JSON.stringify(theme) : null],
       { prepare: true }
     );
 
@@ -199,7 +198,7 @@ app.get("/user/pages/:username", async (req, res) => {
 
   try {
     const result = await client.execute(
-      "SELECT id, title, created_at, username, nb_subpages, public FROM pages WHERE username = ? ALLOW FILTERING",
+      "SELECT id, title, created_at, username, nb_subpages, public, theme FROM pages WHERE username = ? ALLOW FILTERING",
       [username]
     );
 
@@ -212,10 +211,10 @@ app.get("/user/pages/:username", async (req, res) => {
         { prepare: true }
       );
 
-      pages.push({
-        ...p,
-        subpages: subs.rows
-      });
+      const page = { ...p, subpages: subs.rows };
+      // parse theme if present
+      page.theme = page.theme ? JSON.parse(page.theme) : null;
+      pages.push(page);
     }
 
     res.json(pages);
@@ -232,7 +231,7 @@ app.get("/pages/public/:id", async (req, res) => {
 
   try {
     const result = await client.execute(
-      "SELECT id, title, created_at, username, nb_subpages, public FROM pages WHERE id = ? AND public = true",
+      "SELECT id, title, created_at, username, nb_subpages, public, theme FROM pages WHERE id = ? AND public = true",
       [id],
       { prepare: true }
     );
@@ -249,6 +248,7 @@ app.get("/pages/public/:id", async (req, res) => {
     );
 
     page.subpages = subs.rows;
+    page.theme = page.theme ? JSON.parse(page.theme) : null;
 
     res.json(page);
 
@@ -262,7 +262,7 @@ app.get("/pages/public/:id", async (req, res) => {
 app.get("/pages/public", async (req, res) => {
   try {
     const result = await client.execute(
-      "SELECT id, title, username, public, created_at, nb_subpages FROM pages WHERE public = true ALLOW FILTERING"
+      "SELECT id, title, username, public, created_at, nb_subpages, theme FROM pages WHERE public = true ALLOW FILTERING"
     );
 
     const pages = [];
@@ -274,10 +274,9 @@ app.get("/pages/public", async (req, res) => {
         { prepare: true }
       );
 
-      pages.push({
-        ...p,
-        subpages: subs.rows
-      });
+      const page = { ...p, subpages: subs.rows };
+      page.theme = page.theme ? JSON.parse(page.theme) : null;
+      pages.push(page);
     }
 
     res.json(pages);
@@ -288,7 +287,7 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
-// Route theme (exemples minimalistes)
+// Route theme (exemples minimalistes pour l'utilisateur global - inchangé)
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
   if (!id_user) return res.status(400).json({ message: "id_user manquant." });
