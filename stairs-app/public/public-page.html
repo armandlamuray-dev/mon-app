@@ -146,6 +146,7 @@
           <h1>${p.title || '(sans titre)'}</h1>
 
           <div class="meta">
+            <strong>ID :</strong> ${p.id}<br>
             Auteur : <strong>${p.username || 'Inconnu'}</strong><br>
             ${p.created_at ? `Créée le : ${new Date(p.created_at).toLocaleString()}` : ''}
           </div>
