@@ -312,7 +312,51 @@ app.delete("/admin/delete-page/:id", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
+// 🔹 Route admin : supprimer un utilisateur
+app.delete("/admin/delete-user/:username", async (req, res) => {
+  const { username } = req.params;
 
+  if (!username) return res.status(400).json({ message: "Username requis." });
+
+  try {
+    // Vérifie que l'utilisateur existe
+    const check = await client.execute(
+      "SELECT username FROM users WHERE username = ?",
+      [username],
+      { prepare: true }
+    );
+
+    if (check.rowLength === 0)
+      return res.status(404).json({ message: "Utilisateur introuvable." });
+
+    // Supprime l'utilisateur
+    await client.execute(
+      "DELETE FROM users WHERE username = ?",
+      [username],
+      { prepare: true }
+    );
+
+    // Supprime ses pages
+    await client.execute(
+      "DELETE FROM pages WHERE username = ?",
+      [username],
+      { prepare: true }
+    );
+
+    // Supprime ses sous-pages
+    await client.execute(
+      "DELETE FROM subpages WHERE id IN (SELECT id FROM pages WHERE username = ?)",
+      [username],
+      { prepare: true }
+    );
+
+    res.json({ message: `Utilisateur '${username}' supprimé avec succès.` });
+
+  } catch (err) {
+    console.error("Erreur suppression utilisateur :", err);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+});
 // Route theme utilisateur
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
