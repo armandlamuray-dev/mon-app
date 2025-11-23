@@ -134,9 +134,7 @@ app.post("/login", async (req, res) => {
 });
 
 // Création page
-// NOTE : route durcie pour éviter crash quand req.body est undefined
 app.post("/user/add-page", async (req, res) => {
-  // défense : si body absent, on loggue headers et on renvoie erreur claire
   if (!req.body || Object.keys(req.body).length === 0) {
     console.error("Route /user/add-page appelé avec body vide. Headers:", req.headers);
     return res.status(400).json({
@@ -145,37 +143,31 @@ app.post("/user/add-page", async (req, res) => {
     });
   }
 
-  // destructuration sûre
   const payload = req.body || {};
   const { id, title, username, public: isPublic = false, subpages, theme } = payload;
 
-  // validations minimales
   if (!id || !title || !username) {
     return res.status(400).json({ message: "Champs obligatoires manquants (id, title, username)." });
   }
 
   try {
-    // vérification unicité id
     const check = await client.execute("SELECT id FROM pages WHERE id = ?", [id], { prepare: true });
     if (check.rowLength > 0) return res.status(400).json({ message: "Cet ID existe déjà." });
 
     const nb_subpages = Array.isArray(subpages) ? subpages.length : 0;
 
-    // insert dans pages (subpages sont en table séparée), stocke theme en JSON string si fourni
     await client.execute(
       "INSERT INTO pages (id, title, created_at, username, nb_subpages, public, theme) VALUES (?, ?, toTimestamp(now()), ?, ?, ?, ?)",
       [id, title, username, nb_subpages, !!isPublic, theme ? JSON.stringify(theme) : null],
       { prepare: true }
     );
 
-    // insert subpages si fournis
     if (Array.isArray(subpages) && subpages.length > 0) {
       for (const sp of subpages) {
-        // sp doit contenir sub_id, content (image optionnelle)
         const subId = sp.sub_id ?? null;
         const content = sp.content ?? "";
         const image = sp.image ?? null;
-        if (subId === null) continue; // skip malformed
+        if (subId === null) continue;
         await client.execute(
           "INSERT INTO subpages (id, sub_id, content, image) VALUES (?, ?, ?, ?)",
           [id, subId, content, image],
@@ -212,7 +204,6 @@ app.get("/user/pages/:username", async (req, res) => {
       );
 
       const page = { ...p, subpages: subs.rows };
-      // parse theme if present
       page.theme = page.theme ? JSON.parse(page.theme) : null;
       pages.push(page);
     }
@@ -287,6 +278,9 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
+// ===============================
+// 🔥 CORRECTION : SUPPRESSION ADMIN
+// ===============================
 app.delete("/admin/delete-public-page", async (req, res) => {
   try {
     const { id_page } = req.body;
@@ -295,19 +289,30 @@ app.delete("/admin/delete-public-page", async (req, res) => {
       return res.status(400).json({ error: "id_page requis" });
     }
 
-    await cassandraClient.execute(
-      "DELETE FROM public_pages WHERE id_page = ?",
-      [ id_page ],
+    // Supprimer subpages
+    await client.execute(
+      "DELETE FROM subpages WHERE id = ?",
+      [id_page],
       { prepare: true }
     );
 
-    res.json({ success: true, message: "Page publique supprimée" });
+    // Supprimer page
+    await client.execute(
+      "DELETE FROM pages WHERE id = ?",
+      [id_page],
+      { prepare: true }
+    );
+
+    res.json({ success: true, message: "Page publique supprimée." });
   } catch (error) {
     console.error("Erreur admin delete:", error);
-    res.status(500).json({ error: "Erreur serveur" });
+    res.status(500).json({ error: "Erreur serveur." });
   }
 });
 
+// ===============================
+// 🔥 SUPPRESSION PAR USER
+// ===============================
 app.delete("/user/page", async (req, res) => {
   try {
     const { id_user, id_page } = req.body;
@@ -316,7 +321,7 @@ app.delete("/user/page", async (req, res) => {
       return res.status(400).json({ error: "id_user et id_page requis" });
     }
 
-    await cassandraClient.execute(
+    await client.execute(
       "DELETE FROM pages WHERE id_user = ? AND id_page = ?",
       [ id_user, id_page ],
       { prepare: true }
@@ -329,8 +334,7 @@ app.delete("/user/page", async (req, res) => {
   }
 });
 
-
-// Route theme (exemples minimalistes pour l'utilisateur global - inchangé)
+// Route theme
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
   if (!id_user) return res.status(400).json({ message: "id_user manquant." });
