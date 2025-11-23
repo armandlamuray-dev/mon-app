@@ -34,7 +34,6 @@
   </section>
 
   <script>
-    // Fonctions utilitaires pour fetch
     async function fetchJSON(url, options) {
       try {
         const res = await fetch(url, options);
@@ -48,7 +47,7 @@
       }
     }
 
-    // Page
+    // Voir une page
     document.getElementById('view-page-btn').addEventListener('click', async () => {
       const id = document.getElementById('id').value.trim();
       if (!id) return alert('Veuillez entrer l’ID de la page.');
@@ -63,16 +62,21 @@
       `;
     });
 
+    // Supprimer page publique (admin)
     document.getElementById('delete-page-btn').addEventListener('click', async () => {
       const id = document.getElementById('id').value.trim();
       if (!id) return alert('Veuillez entrer l’ID de la page.');
-      if (!confirm('Voulez-vous vraiment supprimer cette page ?')) return;
-      const data = await fetchJSON(`/admin/delete-page/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!confirm('Voulez-vous vraiment supprimer cette page publique ?')) return;
+      const data = await fetchJSON(`/admin/delete-public-page`, {
+        method: 'DELETE',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_page: id })
+      });
       alert(data?.message || 'Page supprimée.');
       document.getElementById('page-details').innerHTML = '';
     });
 
-    // Utilisateur
+    // Voir un utilisateur
     document.getElementById('view-user-btn').addEventListener('click', async () => {
       const username = document.getElementById('userToDelete').value.trim();
       if (!username) return alert('Veuillez entrer le nom d’utilisateur.');
@@ -87,6 +91,7 @@
       `;
     });
 
+    // Supprimer un utilisateur
     document.getElementById('delete-user-btn').addEventListener('click', async () => {
       const username = document.getElementById('userToDelete').value.trim();
       if (!username) return alert('Veuillez entrer le nom d’utilisateur.');

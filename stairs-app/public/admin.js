@@ -1,11 +1,13 @@
-// 🔹 Voir une page
+// 🔹 Voir une page publique
 async function viewPage() {
   const id = document.getElementById("id").value.trim();
   const container = document.getElementById("page-details");
   if (!id) return alert("Saisissez un ID de page.");
+
   try {
     const res = await fetch(`/pages/public/${encodeURIComponent(id)}`);
-    if (!res.ok) return alert("Page introuvable.");
+    if (!res.ok) return alert("Page introuvable ou non publique.");
+
     const p = await res.json();
     container.innerHTML = `
       <h3>${escapeHtml(p.title)}</h3>
@@ -20,15 +22,21 @@ async function viewPage() {
   }
 }
 
-// 🔹 Supprimer une page
+// 🔹 Supprimer une page publique (admin)
 async function deletePage() {
   const id = document.getElementById("id").value.trim();
   if (!id) return alert("Entrez un ID de page.");
-  if (!confirm("Voulez-vous vraiment supprimer cette page ?")) return;
+  if (!confirm("Voulez-vous vraiment supprimer cette page publique ?")) return;
+
   try {
-    const res = await fetch(`/admin/delete-page/${encodeURIComponent(id)}`, { method: "DELETE" });
-    const text = await res.text();
-    alert(text);
+    const res = await fetch("/admin/delete-public-page", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_page: id })
+    });
+
+    const data = await res.json();
+    alert(data.message || data.error);
     document.getElementById("page-details").innerHTML = "";
   } catch (err) {
     alert("Erreur suppression page.");
@@ -41,6 +49,7 @@ async function viewUser() {
   const username = document.getElementById("userToDelete").value.trim();
   const container = document.getElementById("user-details");
   if (!username) return alert("Entrez un nom d'utilisateur.");
+
   try {
     const resUser = await fetch(`/admin/user/${encodeURIComponent(username)}`);
     if (!resUser.ok) return alert("Utilisateur introuvable.");
@@ -55,7 +64,9 @@ async function viewUser() {
       <p><b>Email :</b> ${escapeHtml(user.email)}</p>
       <p><b>Créé le :</b> ${new Date(user.created_at).toLocaleString()}</p>
       <h4>Pages publiques :</h4>
-      ${pages.length ? `<ul>${pages.map(p => `<li>${escapeHtml(p.title)} (${escapeHtml(p.id)})</li>`).join("")}</ul>` : "<p>Aucune.</p>"}
+      ${pages.filter(p => p.public).length
+        ? `<ul>${pages.filter(p => p.public).map(p => `<li>${escapeHtml(p.title)} (${escapeHtml(p.id)})</li>`).join("")}</ul>`
+        : "<p>Aucune.</p>"}
     `;
   } catch (err) {
     alert("Erreur réseau utilisateur.");
@@ -68,6 +79,7 @@ async function deleteUser() {
   const username = document.getElementById("userToDelete").value.trim();
   if (!username) return alert("Entrez un nom d'utilisateur.");
   if (!confirm("Voulez-vous vraiment supprimer cet utilisateur ?")) return;
+
   try {
     const res = await fetch(`/admin/delete-user/${encodeURIComponent(username)}`, { method: "DELETE" });
     const text = await res.text();

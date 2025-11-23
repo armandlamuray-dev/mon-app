@@ -278,52 +278,47 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
-// ===============================
-// 🔥 CORRECTION : SUPPRESSION ADMIN
-// ===============================
+// 🔹 Supprimer une page publique (admin uniquement)
 app.delete("/admin/delete-public-page", async (req, res) => {
   try {
     const { id_page } = req.body;
+    if (!id_page) return res.status(400).json({ error: "id_page requis" });
 
-    if (!id_page) {
-      return res.status(400).json({ error: "id_page requis" });
-    }
-
-    // Supprimer subpages
-    await client.execute(
-      "DELETE FROM subpages WHERE id = ?",
+    const result = await client.execute(
+      "SELECT public FROM pages WHERE id = ?",
       [id_page],
       { prepare: true }
     );
 
-    // Supprimer page
+    if (result.rowLength === 0 || !result.rows[0].public) {
+      return res.status(404).json({ error: "Page non trouvée ou non publique" });
+    }
+
     await client.execute(
       "DELETE FROM pages WHERE id = ?",
       [id_page],
       { prepare: true }
     );
 
-    res.json({ success: true, message: "Page publique supprimée." });
-  } catch (error) {
-    console.error("Erreur admin delete:", error);
-    res.status(500).json({ error: "Erreur serveur." });
+    res.json({ success: true, message: "Page publique supprimée" });
+
+  } catch (err) {
+    console.error("Erreur admin delete page :", err);
+    res.status(500).json({ error: "Erreur serveur" });
   }
 });
 
-// ===============================
-// 🔥 SUPPRESSION PAR USER
-// ===============================
+// Supprimer page utilisateur (normale)
 app.delete("/user/page", async (req, res) => {
   try {
     const { id_user, id_page } = req.body;
-
     if (!id_user || !id_page) {
       return res.status(400).json({ error: "id_user et id_page requis" });
     }
 
     await client.execute(
       "DELETE FROM pages WHERE id_user = ? AND id_page = ?",
-      [ id_user, id_page ],
+      [id_user, id_page],
       { prepare: true }
     );
 
