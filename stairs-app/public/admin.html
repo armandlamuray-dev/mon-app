@@ -18,7 +18,7 @@
   <h1>🛠️ Panneau d’administration</h1>
 
   <section>
-    <h2>🔍 Gérer une page</h2>
+    <h2>🔍 Gérer une page publique</h2>
     <input type="text" id="id" placeholder="ID de la page" />
     <button id="view-page-btn">Afficher</button>
     <button id="delete-page-btn">Supprimer</button>
@@ -47,13 +47,13 @@
       }
     }
 
-    // Voir une page
+    // Page
     document.getElementById('view-page-btn').addEventListener('click', async () => {
       const id = document.getElementById('id').value.trim();
       if (!id) return alert('Veuillez entrer l’ID de la page.');
       const data = await fetchJSON(`/pages/public/${encodeURIComponent(id)}`);
       const details = document.getElementById('page-details');
-      if (!data) return details.innerHTML = 'Page non trouvée.';
+      if (!data) return details.innerHTML = 'Page non trouvée ou non publique.';
       details.innerHTML = `
         <strong>Titre :</strong> ${data.title || '(sans titre)'}<br>
         <strong>Auteur :</strong> ${data.username}<br>
@@ -62,21 +62,16 @@
       `;
     });
 
-    // Supprimer page publique (admin)
     document.getElementById('delete-page-btn').addEventListener('click', async () => {
       const id = document.getElementById('id').value.trim();
       if (!id) return alert('Veuillez entrer l’ID de la page.');
       if (!confirm('Voulez-vous vraiment supprimer cette page publique ?')) return;
-      const data = await fetchJSON(`/admin/delete-public-page`, {
-        method: 'DELETE',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_page: id })
-      });
-      alert(data?.message || 'Page supprimée.');
+      const data = await fetchJSON(`/admin/delete-page/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      alert(data?.message || 'Erreur serveur');
       document.getElementById('page-details').innerHTML = '';
     });
 
-    // Voir un utilisateur
+    // Utilisateur
     document.getElementById('view-user-btn').addEventListener('click', async () => {
       const username = document.getElementById('userToDelete').value.trim();
       if (!username) return alert('Veuillez entrer le nom d’utilisateur.');
@@ -91,7 +86,6 @@
       `;
     });
 
-    // Supprimer un utilisateur
     document.getElementById('delete-user-btn').addEventListener('click', async () => {
       const username = document.getElementById('userToDelete').value.trim();
       if (!username) return alert('Veuillez entrer le nom d’utilisateur.');

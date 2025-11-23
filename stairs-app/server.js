@@ -278,58 +278,42 @@ app.get("/pages/public", async (req, res) => {
   }
 });
 
-// 🔹 Supprimer une page publique (admin uniquement)
-app.delete("/admin/delete-public-page", async (req, res) => {
-  try {
-    const { id_page } = req.body;
-    if (!id_page) return res.status(400).json({ error: "id_page requis" });
+// 🔹 Route admin delete page publique
+app.delete("/admin/delete-page/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ message: "ID requis." });
 
-    const result = await client.execute(
-      "SELECT public FROM pages WHERE id = ?",
-      [id_page],
+  try {
+    // vérifie que la page est publique
+    const check = await client.execute(
+      "SELECT id FROM pages WHERE id = ? AND public = true",
+      [id],
       { prepare: true }
     );
 
-    if (result.rowLength === 0 || !result.rows[0].public) {
-      return res.status(404).json({ error: "Page non trouvée ou non publique" });
-    }
+    if (check.rowLength === 0) return res.status(404).json({ message: "Page non trouvée ou non publique." });
 
     await client.execute(
       "DELETE FROM pages WHERE id = ?",
-      [id_page],
+      [id],
       { prepare: true }
     );
-
-    res.json({ success: true, message: "Page publique supprimée" });
-
-  } catch (err) {
-    console.error("Erreur admin delete page :", err);
-    res.status(500).json({ error: "Erreur serveur" });
-  }
-});
-
-// Supprimer page utilisateur (normale)
-app.delete("/user/page", async (req, res) => {
-  try {
-    const { id_user, id_page } = req.body;
-    if (!id_user || !id_page) {
-      return res.status(400).json({ error: "id_user et id_page requis" });
-    }
 
     await client.execute(
-      "DELETE FROM pages WHERE id_user = ? AND id_page = ?",
-      [id_user, id_page],
+      "DELETE FROM subpages WHERE id = ?",
+      [id],
       { prepare: true }
     );
 
-    res.json({ success: true, message: "Page supprimée." });
+    res.json({ message: "Page publique supprimée." });
+
   } catch (err) {
-    console.error("Erreur DELETE /user/page :", err);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("Erreur suppression page publique :", err);
+    res.status(500).json({ message: "Erreur serveur." });
   }
 });
 
-// Route theme
+// Route theme utilisateur
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
   if (!id_user) return res.status(400).json({ message: "id_user manquant." });
