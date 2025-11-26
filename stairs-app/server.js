@@ -15,8 +15,8 @@ const fs = require("fs");
 
 const app = express();
 app.use(cors());
-app.use(express.json()); // important pour JSON
-app.use(express.urlencoded({ extended: true })); // pour form-urlencoded au cas où
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ===============================
@@ -284,7 +284,6 @@ app.delete("/admin/delete-page/:id", async (req, res) => {
   if (!id) return res.status(400).json({ message: "ID requis." });
 
   try {
-    // vérifie que la page est publique
     const check = await client.execute(
       "SELECT id FROM pages WHERE id = ? AND public = true",
       [id],
@@ -312,14 +311,16 @@ app.delete("/admin/delete-page/:id", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
-// 🔹 Route admin : supprimer un utilisateur
+
+
+// 🔹 Route admin : supprimer un utilisateur — VERSION CORRIGÉE
 app.delete("/admin/delete-user/:username", async (req, res) => {
   const { username } = req.params;
 
   if (!username) return res.status(400).json({ message: "Username requis." });
 
   try {
-    // Vérifie que l'utilisateur existe
+    // Vérifie que l’utilisateur existe
     const check = await client.execute(
       "SELECT username FROM users WHERE username = ?",
       [username],
@@ -329,23 +330,31 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
     if (check.rowLength === 0)
       return res.status(404).json({ message: "Utilisateur introuvable." });
 
-    // Supprime l'utilisateur
-    await client.execute(
-      "DELETE FROM users WHERE username = ?",
-      [username],
-      { prepare: true }
+    // 🔸 1) Récupère les IDs des pages de l’utilisateur
+    const pages = await client.execute(
+      "SELECT id FROM pages WHERE username = ? ALLOW FILTERING",
+      [username]
     );
 
-    // Supprime ses pages
+    // 🔸 2) Supprime les sous-pages pour chaque page
+    for (const row of pages.rows) {
+      await client.execute(
+        "DELETE FROM subpages WHERE id = ?",
+        [row.id],
+        { prepare: true }
+      );
+    }
+
+    // 🔸 3) Supprime les pages
     await client.execute(
       "DELETE FROM pages WHERE username = ?",
       [username],
       { prepare: true }
     );
 
-    // Supprime ses sous-pages
+    // 🔸 4) Supprime l’utilisateur
     await client.execute(
-      "DELETE FROM subpages WHERE id IN (SELECT id FROM pages WHERE username = ?)",
+      "DELETE FROM users WHERE username = ?",
       [username],
       { prepare: true }
     );
@@ -357,6 +366,7 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
+
 // Route theme utilisateur
 app.post('/user/theme', async (req, res) => {
   const { id_user, theme } = req.body || {};
