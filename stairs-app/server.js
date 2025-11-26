@@ -312,6 +312,8 @@ app.delete("/admin/delete-page/:id", async (req, res) => {
     res.status(500).json({ message: "Erreur serveur." });
   }
 });
+
+
 // 🔹 Route admin : supprimer un utilisateur
 app.delete("/admin/delete-user/:username", async (req, res) => {
   const { username } = req.params;
@@ -345,7 +347,7 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
 
     // Supprime ses sous-pages
     await client.execute(
-      "DELETE FROM subpages WHERE content IN (SELECT id FROM pages WHERE username = ?)",
+      "DELETE FROM subpages WHERE ida IN (SELECT idb FROM pages WHERE username = ?)",
       [username],
       { prepare: true }
     );
