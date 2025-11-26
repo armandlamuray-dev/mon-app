@@ -331,20 +331,32 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
     if (check.rowLength === 0)
       return res.status(404).json({ message: "Utilisateur introuvable." });
 
-    // Supprime ses sous-pages
-    await client.execute(
-      "DELETE FROMpages WHERE id IN (SELECT id FROM pages WHERE username = ?)",
-      [username],
-      { prepare: true }
+    // Récupère toutes les pages de l'utilisateur
+    const pagesResult = await client.execute(
+      "SELECT id FROM pages WHERE username = ? ALLOW FILTERING",
+      [username]
     );
 
-    // Supprime ses pages
-    await client.execute(
-      "DELETE FROM pages WHERE username = ?",
-      [username],
-      { prepare: true }
-    );
-
+    // Supprime toutes les pages et leurs sous-pages
+    for (const page of pagesResult.rows) {
+      const subpagesResult = await client.execute(
+        "SELECT sub_id FROM subpages WHERE id = ? ",
+          [page.id],
+          { prepare: true }
+      );
+      for (const subpage of subpagesResult.rows) {
+        await client.execute(
+          "DELETE FROM subpages WHERE id = ? and sub_id = ?",
+          [page.id,subpage.sub_id],
+          { prepare: true }
+        );
+      }
+      await client.execute(
+        "DELETE FROM pages WHERE id = ?",
+        [page.id],
+        { prepare: true }
+      );
+    }
     // Supprime l'utilisateur
     await client.execute(
       "DELETE FROM users WHERE username = ?",
