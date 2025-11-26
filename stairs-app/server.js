@@ -345,7 +345,7 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
 
     // Supprime ses sous-pages
     await client.execute(
-      "DELETE FROM subpages WHERE id IN (SELECT id FROM pages WHERE username = ?)",
+      "DELETE FROM subpages WHERE content IN (SELECT id FROM pages WHERE username = ?)",
       [username],
       { prepare: true }
     );
@@ -354,7 +354,7 @@ app.delete("/admin/delete-user/:username", async (req, res) => {
 
   } catch (err) {
     console.error("Erreur suppression utilisateur :", err);
-    res.status(500).json({ message: "Erreur." });
+    res.status(500).json({ message: "Erreur serveur." });
   }
 });
 // Route theme utilisateur
