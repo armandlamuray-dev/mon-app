@@ -1,93 +1,366 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ajouter une page</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ajouter une page — Éditeur</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
-    form { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    input, textarea, button { width: 100%; margin: 10px 0; padding: 8px; }
-    button { background: #0077cc; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #005fa3; }
+    body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f8;margin:0;padding:20px}
+    h1{margin:6px 0 16px}
+    .layout{display:flex;gap:18px}
+    .left{width:360px}
+    .card{background:#fff;padding:14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+    label{display:block;margin-top:10px;font-weight:600;font-size:0.9rem}
+    input[type=text],input[type=number],select,textarea{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:1px solid #ccc;box-sizing:border-box}
+    button{margin-top:12px;padding:10px 12px;border-radius:8px;border:0;background:#0077cc;color:#fff;cursor:pointer}
+    button.secondary{background:#555}
+    #subpages-list{margin-top:12px}
+    .subpage-item{padding:10px;border-radius:6px;border:1px dashed #ddd;margin-bottom:8px;background:#fafafa}
+    .elems{margin-top:8px}
+    .elem{padding:8px;border-radius:6px;border:1px solid #eee;margin-bottom:8px;background:#fff}
+    .row{display:flex;gap:8px}
+    .row > *{flex:1}
+    .small{font-size:0.9rem;color:#444}
+    .preview-stage{flex:1;min-height:520px}
+    .stage { background: #fff; height: 100%; border-radius:12px; padding:18px; overflow:auto; box-shadow:0 2px 12px rgba(0,0,0,.06)}
+    .stage .page-box{position:relative;background:var(--bg,#f2e9d8);border-radius:12px;padding:16px;min-height:420px}
+    .stage .element{position:absolute;border:1px solid rgba(0,0,0,.06);padding:6px;background:rgba(255,255,255,.9);box-sizing:border-box}
+    .muted{color:#777;font-size:0.9rem}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .controls > *{flex:1 1 120px}
   </style>
 </head>
 <body>
-  <script src="header.js"></script>
+  <script src="header.js" defer></script>
 
-  <h1>Créer une nouvelle page principale</h1>
+  <h1>Créer une page — Éditeur interactif (éléments)</h1>
 
-  <form id="add-page-form" enctype="multipart/form-data">
-    <input type="text" id="title" placeholder="Titre de la page" required>
-    <input type="number" id="nbSubpages" placeholder="Nombre de sous-pages (min. 1)" min="1" value="1" required>
-    <textarea id="firstContent" placeholder="Contenu de la première sous-page" required></textarea>
-    <input type="file" id="firstImage" accept="image/*">
-    <label><input type="checkbox" id="publicPage"> Page publique</label>
-    <button type="submit">Créer la page</button>
-  </form>
+  <div class="layout">
+    <div class="left">
+      <div class="card">
+        <label>Titre de la page</label>
+        <input id="title" type="text" placeholder="Titre" />
 
-  <button onclick="window.location.href='user.html'">⬅ Retour</button>
+        <label>Visibilité</label>
+        <select id="publicPage"><option value="true">Publique</option><option value="false" selected>Privée</option></select>
 
-  <script>
-    function generateId(length = 16) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let result = '';
-      for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-      return result;
-    }
+        <label>Nombre de sous-pages</label>
+        <input id="nbSubpages" type="number" value="1" min="1" />
 
-    document.getElementById('add-page-form').addEventListener('submit', async e => {
-      e.preventDefault();
+        <div style="margin-top:10px">
+          <button id="createSubpagesBtn" class="secondary">Générer blocs de sous-pages</button>
+        </div>
 
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (!user || !user.username) {
-        alert('Vous devez être connecté.');
-        window.location.href = 'login.html';
-        return;
-      }
+        <div id="subpages-list" style="margin-top:12px"></div>
 
-      const id = generateId();
-      const title = document.getElementById('title').value.trim();
-      const nbSubpages = parseInt(document.getElementById('nbSubpages').value);
-      const content = document.getElementById('firstContent').value.trim();
-      const imageFile = document.getElementById('firstImage').files[0] ?? null;
-      const isPublic = document.getElementById('publicPage').checked;
+        <div style="margin-top:12px">
+          <button id="savePageBtn">Enregistrer la page</button>
+          <button id="cancelBtn" class="secondary" onclick="window.location.href='user.html'">Annuler</button>
+        </div>
 
-      if (!title || !content || nbSubpages < 1) {
-        alert('Veuillez remplir correctement tous les champs.');
-        return;
-      }
+        <p class="muted" style="margin-top:10px">Images : fournissez des URL (hébergées) pour l'instant. L'éditeur permet d'ajouter des éléments texte / image, leur position (x,y), taille et style.</p>
+      </div>
 
-      // FormData pour upload fichiers
-      const formData = new FormData();
-      formData.append("id", id);
-      formData.append("title", title);
-      formData.append("username", user.username);
-      formData.append("public", isPublic);
-      formData.append("subpages[0][content]", content);
-      if(imageFile) formData.append("subpages[0][image]", imageFile);
+      <div style="height:12px"></div>
 
-      try {
-        const res = await fetch('/user/add-page', {
-          method: 'POST',
-          body: formData
-        });
+      <div class="card">
+        <h3>Raccourcis</h3>
+        <p class="small">1. Créer les sous-pages → 2. Pour chaque sous-page ajouter des éléments (Text / Image) → 3. Ajuster x/y/width/height/font/size/color → 4. Enregistrer.</p>
+      </div>
+    </div>
 
-        const data = await res.json().catch(() => null);
+    <div class="preview-stage">
+      <div class="card stage">
+        <div id="preview" class="page-box" style="--bg:#f2e9d8">
+          <div id="preview-title" style="font-weight:700;font-size:1.4rem;margin-bottom:6px"></div>
+          <div id="preview-meta" class="muted" style="margin-bottom:12px"></div>
+          <div id="preview-content" style="position:relative;min-height:300px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        if (!res.ok) {
-          console.error('Erreur add-page:', data || await res.text());
-          alert((data && data.message) || 'Erreur lors de la création de la page.');
-          return;
-        }
+<script>
+/* ===== simple interactive builder (no drag/drop for now) =====
+  - subpages: array with elements[]
+  - element fields: {element_id, type:'text'|'image', x,y,width,height, content, fontsize, color, fontfamily, zindex}
+  - preview renders elements absolutely using x,y,width,height (pixels)
+  - sends JSON to /user/add-page
+*/
 
-        alert((data && data.message) || 'Page créée avec succès !');
-        window.location.href = 'user.html';
-      } catch (err) {
-        console.error('Erreur réseau add-page:', err);
-        alert('Impossible de contacter le serveur.');
-      }
+function generateId(len=16){
+  const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from({length:len},_=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+let subpages = []; // in-memory builder
+
+function renderSubpageControls(){
+  const container = document.getElementById('subpages-list');
+  container.innerHTML = '';
+  subpages.forEach((sp, idx) => {
+    const n = idx+1;
+    const div = document.createElement('div');
+    div.className = 'subpage-item';
+    div.innerHTML = `
+      <strong>Sous-page ${n}</strong>
+      <div style="margin-top:8px">
+        <label class="small">Titre sous-page (optionnel)</label>
+        <input type="text" id="sp_title_${idx}" value="${escapeHtml(sp.title||'')}" placeholder="Titre sous-page ${n}" />
+        <label class="small">Contenu principal (texte)</label>
+        <textarea id="sp_content_${idx}" rows="3" placeholder="Texte principal...">${escapeHtml(sp.mainContent||'')}</textarea>
+        <div class="elems">
+          <div style="margin-top:8px;font-weight:600">Éléments</div>
+          <div id="elems_${idx}"></div>
+          <div style="margin-top:8px">
+            <button data-idx="${idx}" class="addElemBtn">➕ Ajouter élément</button>
+          </div>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+
+    // render elements list
+    const elemsDiv = div.querySelector(`#elems_${idx}`);
+    elemsDiv.innerHTML = '';
+    sp.elements.forEach(el=>{
+      const eBox = document.createElement('div');
+      eBox.className='elem';
+      eBox.innerHTML = `
+        <div class="row">
+          <div><strong>#${el.element_id}</strong> — ${el.type}</div>
+          <div style="text-align:right"><button data-sp="${idx}" data-eid="${el.element_id}" class="delElemBtn">Supprimer</button></div>
+        </div>
+        <div style="margin-top:8px" class="row">
+          <input type="number" placeholder="x" value="${el.x}" id="el_${idx}_${el.element_id}_x" />
+          <input type="number" placeholder="y" value="${el.y}" id="el_${idx}_${el.element_id}_y" />
+        </div>
+        <div style="margin-top:8px" class="row">
+          <input type="number" placeholder="width" value="${el.width||150}" id="el_${idx}_${el.element_id}_w" />
+          <input type="number" placeholder="height" value="${el.height||40}" id="el_${idx}_${el.element_id}_h" />
+        </div>
+        <div style="margin-top:8px">
+          <select id="el_${idx}_${el.element_id}_type">
+            <option value="text"${el.type==='text'?' selected':''}>Texte</option>
+            <option value="image"${el.type==='image'?' selected':''}>Image (URL)</option>
+          </select>
+          <input type="text" id="el_${idx}_${el.element_id}_content" placeholder="Texte ou URL image" value="${escapeHtml(el.content||'')}" style="margin-top:8px" />
+        </div>
+        <div style="margin-top:8px" class="row">
+          <input type="number" placeholder="fontsize" value="${el.fontsize||14}" id="el_${idx}_${el.element_id}_fontsize" />
+          <input type="text" placeholder="color" value="${el.color||'#000000'}" id="el_${idx}_${el.element_id}_color" />
+        </div>
+      `;
+      elemsDiv.appendChild(eBox);
     });
-  </script>
+  });
+
+  // attach listeners
+  document.querySelectorAll('.addElemBtn').forEach(b=>{
+    b.onclick = (ev)=> {
+      const idx = Number(ev.target.dataset.idx);
+      addElementToSubpage(idx);
+    };
+  });
+  document.querySelectorAll('.delElemBtn').forEach(b=>{
+    b.onclick = (ev)=>{
+      const sp = Number(ev.target.dataset.sp);
+      const eid = Number(ev.target.dataset.eid);
+      subpages[sp].elements = subpages[sp].elements.filter(e=>e.element_id!==eid);
+      renderSubpageControls();
+      renderPreview();
+    };
+  });
+
+  // onchange handlers to update model live
+  subpages.forEach((sp, idx)=>{
+    const titleInput = document.getElementById(`sp_title_${idx}`);
+    const contentInput = document.getElementById(`sp_content_${idx}`);
+    titleInput && (titleInput.oninput = ()=> { subpages[idx].title = titleInput.value; renderPreview(); });
+    contentInput && (contentInput.oninput = ()=> { subpages[idx].mainContent = contentInput.value; renderPreview(); });
+
+    sp.elements.forEach(el=>{
+      ['x','y','w','h','content','fontsize','color','type'].forEach(k=>{
+        const id = (k==='w'?'el_'+idx+'_'+el.element_id+'_w' : k==='h' ? 'el_'+idx+'_'+el.element_id+'_h' : k==='type' ? 'el_'+idx+'_'+el.element_id+'_type' : k==='content' ? 'el_'+idx+'_'+el.element_id+'_content' : 'el_'+idx+'_'+el.element_id+'_'+k);
+        const node = document.getElementById(id);
+        if(node){
+          node.oninput = ()=> {
+            const val = node.type==='number' ? Number(node.value) : node.value;
+            if(k==='w') el.width = Number(node.value)||el.width;
+            else if(k==='h') el.height = Number(node.value)||el.height;
+            else if(k==='x') el.x = Number(node.value)||0;
+            else if(k==='y') el.y = Number(node.value)||0;
+            else if(k==='fontsize') el.fontsize = Number(node.value)||14;
+            else if(k==='color') el.color = node.value;
+            else if(k==='type') el.type = node.value;
+            else if(k==='content') el.content = node.value;
+            renderPreview();
+          };
+        }
+      });
+    });
+  });
+}
+
+function addElementToSubpage(idx){
+  const sp = subpages[idx];
+  const next = (sp.elements.length? Math.max(...sp.elements.map(e=>e.element_id))+1 : 1);
+  sp.elements.push({
+    element_id: next,
+    type: 'text',
+    x: 10,
+    y: 10 + sp.elements.length*54,
+    width: 200,
+    height: 40,
+    content: 'Texte...',
+    fontsize: 14,
+    color: "#000000",
+    fontfamily: "Arial",
+    zindex: 0
+  });
+  renderSubpageControls();
+  renderPreview();
+}
+
+function renderPreview(pageIndex=0){
+  const title = document.getElementById('title').value.trim();
+  const previewTitle = document.getElementById('preview-title');
+  const previewMeta = document.getElementById('preview-meta');
+  const previewContent = document.getElementById('preview-content');
+
+  previewTitle.textContent = title || '(sans titre)';
+  previewMeta.textContent = 'Aperçu (sous-page '+(pageIndex+1)+')';
+  previewContent.innerHTML = '';
+  const sp = subpages[pageIndex] || { elements: [], mainContent: '' };
+
+  // place mainContent as normal flow at top-left
+  const mainDiv = document.createElement('div');
+  mainDiv.style.marginBottom = '12px';
+  mainDiv.style.whiteSpace = 'pre-wrap';
+  mainDiv.textContent = sp.mainContent || '';
+  previewContent.appendChild(mainDiv);
+
+  // absolute container for elements
+  const absContainer = document.createElement('div');
+  absContainer.style.position='relative';
+  absContainer.style.minHeight='240px';
+  absContainer.style.width='100%';
+  absContainer.style.height='380px';
+  previewContent.appendChild(absContainer);
+
+  sp.elements.slice().sort((a,b)=> (a.zindex||0)-(b.zindex||0)).forEach(el=>{
+    const node = document.createElement(el.type==='image' ? 'img' : 'div');
+    node.className='element';
+    node.style.left = (el.x||0)+'px';
+    node.style.top = (el.y||0)+'px';
+    node.style.width = (el.width||120)+'px';
+    node.style.height = (el.height|| (el.type==='image'?'auto':'40'))+'px';
+    node.style.zIndex = el.zindex || 0;
+    node.style.overflow = 'hidden';
+    node.style.fontSize = (el.fontsize||14)+'px';
+    node.style.color = el.color || '#000';
+    if(el.type==='image'){
+      node.src = el.content || '';
+      node.style.objectFit = 'cover';
+    } else {
+      node.textContent = el.content || '';
+    }
+    absContainer.appendChild(node);
+  });
+}
+
+/* helpers */
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* init */
+document.getElementById('createSubpagesBtn').addEventListener('click', ()=>{
+  const n = Math.max(1, Number(document.getElementById('nbSubpages').value)||1);
+  subpages = [];
+  for(let i=0;i<n;i++){
+    subpages.push({ title: '', mainContent:'', elements: [] });
+  }
+  renderSubpageControls();
+  renderPreview(0);
+});
+
+/* allow preview to switch subpage when clicking its card in left (optional) */
+/* small click handler: when clicking subpage title in left, preview that index */
+document.getElementById('subpages-list').addEventListener('click', (ev)=>{
+  const el = ev.target;
+  // try to detect parent .subpage-item and index among siblings
+  const parent = el.closest('.subpage-item');
+  if(!parent) return;
+  const items = Array.from(document.querySelectorAll('.subpage-item'));
+  const idx = items.indexOf(parent);
+  if(idx>=0) renderPreview(idx);
+});
+
+/* save page */
+document.getElementById('savePageBtn').addEventListener('click', async ()=>{
+  const user = JSON.parse(localStorage.getItem('user'));
+  if(!user || !user.username){ alert('Connectez-vous.'); window.location.href='login.html'; return; }
+
+  const title = document.getElementById('title').value.trim();
+  if(!title) { alert('Le titre est requis'); return; }
+
+  // pull latest values from inputs (some may be unsynced)
+  subpages.forEach((sp, idx)=>{
+    const t = document.getElementById(`sp_title_${idx}`);
+    const c = document.getElementById(`sp_content_${idx}`);
+    if(t) sp.title = t.value;
+    if(c) sp.mainContent = c.value;
+    // elements have been updated by inputs oninput; but ensure we read final values
+    sp.elements.forEach(el=>{
+      const xN = document.getElementById(`el_${idx}_${el.element_id}_x`);
+      const yN = document.getElementById(`el_${idx}_${el.element_id}_y`);
+      const wN = document.getElementById(`el_${idx}_${el.element_id}_w`);
+      const hN = document.getElementById(`el_${idx}_${el.element_id}_h`);
+      const cN = document.getElementById(`el_${idx}_${el.element_id}_content`);
+      const fN = document.getElementById(`el_${idx}_${el.element_id}_fontsize`);
+      const coN = document.getElementById(`el_${idx}_${el.element_id}_color`);
+      const ty = document.getElementById(`el_${idx}_${el.element_id}_type`);
+      if(xN) el.x = Number(xN.value)||0;
+      if(yN) el.y = Number(yN.value)||0;
+      if(wN) el.width = Number(wN.value)||el.width;
+      if(hN) el.height = Number(hN.value)||el.height;
+      if(cN) el.content = cN.value;
+      if(fN) el.fontsize = Number(fN.value)||el.fontsize;
+      if(coN) el.color = coN.value;
+      if(ty) el.type = ty.value;
+    });
+  });
+
+  const payload = {
+    id: generateId(),
+    title,
+    username: user.username,
+    public: document.getElementById('publicPage').value === 'true',
+    subpages: subpages.map((sp, idx)=>({
+      sub_id: idx+1,
+      title: sp.title || '',
+      content: sp.mainContent || '',
+      elements: sp.elements
+    }))
+  };
+
+  try {
+    const res = await fetch('/user/add-page', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(()=>null);
+    if(!res.ok){ console.error('Erreur add-page',data); alert((data&&data.message) || 'Erreur serveur'); return; }
+    alert(data.message || 'Page créée.');
+    window.location.href = 'user.html';
+  } catch (err){
+    console.error(err);
+    alert('Erreur réseau.');
+  }
+});
+
+/* quick initialize default one subpage */
+document.getElementById('createSubpagesBtn').click();
+</script>
 </body>
 </html>
